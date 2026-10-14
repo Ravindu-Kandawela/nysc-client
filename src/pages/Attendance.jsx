@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { 
   Check, Clock, AlertCircle, Calendar, Save, CheckCheck, Printer, 
   BarChart3, ChevronLeft, ChevronRight, Download, Search, Users, 
-  TrendingUp, X, MessageCircle, Send, Phone, Copy, Bell, Edit2, ExternalLink, Smartphone 
+  TrendingUp, X, MessageCircle, Send, Phone, Copy, Bell, Edit2, ExternalLink, Smartphone, Shield 
 } from 'lucide-react';
 import { api } from '../api';
 import html2canvas from 'html2canvas';
@@ -52,6 +52,10 @@ export default function Attendance({ batchId }) {
   const [iphoneInfo, setIphoneInfo] = useState(null);
   const [showIphoneGuide, setShowIphoneGuide] = useState(false);
   const [copiedUrlToast, setCopiedUrlToast] = useState(false);
+  const [copiedOicUrlToast, setCopiedOicUrlToast] = useState(false);
+  const [copiedOicMsgToast, setCopiedOicMsgToast] = useState(false);
+  const [smsTab, setSmsTab] = useState('parents'); // 'parents' | 'oic'
+  const [oicSummaryData, setOicSummaryData] = useState(null);
 
   const fetchAlertData = async () => {
     if (!batchId) return;
@@ -71,6 +75,12 @@ export default function Attendance({ batchId }) {
       try {
         const info = await api.get('/auto-sms/info');
         setIphoneInfo(info);
+      } catch (e) { /* ignore */ }
+
+      // Fetch OIC Daily Attendance Summary
+      try {
+        const oic = await api.get(`/auto-sms/oic-summary?batchId=${batchId}&date=${date}`);
+        setOicSummaryData(oic);
       } catch (e) { /* ignore */ }
     } catch (err) {
       console.error('Failed to fetch absent alerts:', err);
@@ -1416,10 +1426,47 @@ export default function Attendance({ batchId }) {
               </div>
             </div>
 
-            {/* Modal Body / Absentees List */}
+            {/* Modal Navigation Tabs: Parent SMS vs OIC Daily Summary */}
+            <div className="flex border-b border-slate-200 bg-slate-50 px-4 sm:px-6 pt-2.5 gap-2">
+              <button
+                type="button"
+                onClick={() => setSmsTab('parents')}
+                className={`pb-2.5 px-3 text-xs font-bold border-b-2 transition-all flex items-center gap-1.5 ${
+                  smsTab === 'parents'
+                    ? 'border-indigo-600 text-indigo-700 bg-white rounded-t-lg'
+                    : 'border-transparent text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                <Users className="w-3.5 h-3.5" />
+                <span>1. දෙමාපිය දැනුම්දීම් (Parent Absent SMS)</span>
+                <span className="text-[10px] bg-amber-100 text-amber-800 px-1.5 py-0.2 rounded-full font-bold">
+                  {alertData?.absentees?.length || 0} Absent
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setSmsTab('oic')}
+                className={`pb-2.5 px-3 text-xs font-bold border-b-2 transition-all flex items-center gap-1.5 ${
+                  smsTab === 'oic'
+                    ? 'border-indigo-600 text-indigo-700 bg-white rounded-t-lg'
+                    : 'border-transparent text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                <Shield className="w-3.5 h-3.5" />
+                <span>2. මධ්‍යස්ථාන භාර නිලධාරී (OIC Daily Report)</span>
+                <span className="text-[10px] bg-indigo-100 text-indigo-800 px-1.5 py-0.2 rounded-full font-bold">
+                  ම.භා.නි
+                </span>
+              </button>
+            </div>
+
+            {/* Modal Body */}
             <div className="p-4 sm:p-6 overflow-y-auto space-y-4 flex-1">
-              {/* iPhone Zero-Click Automated SMS Setup Guide */}
-              {showIphoneGuide && (
+              {smsTab === 'parents' && (
+                <>
+                  {/* iPhone Zero-Click Automated SMS Setup Guide */}
+                  {showIphoneGuide && (
                 <div className="p-4 rounded-2xl bg-gradient-to-br from-indigo-900 to-slate-900 text-white shadow-lg space-y-3 border border-indigo-500/40 animate-in fade-in">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
@@ -1653,6 +1700,134 @@ export default function Attendance({ batchId }) {
                         </div>
                       );
                     })}
+                  </div>
+                </div>
+              )}
+
+                </>
+              )}
+
+              {smsTab === 'oic' && (
+                <div className="space-y-4 animate-in fade-in">
+                  {/* OIC Recipient & Stats Card */}
+                  <div className="p-4 rounded-2xl bg-gradient-to-br from-indigo-950 via-slate-900 to-indigo-900 text-white shadow-lg space-y-4 border border-indigo-500/30">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-white/10 pb-3">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-9 h-9 rounded-xl bg-indigo-500/25 border border-indigo-400/30 flex items-center justify-center text-indigo-300">
+                          <Shield className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <div className="font-bold text-sm text-white flex items-center gap-2">
+                            <span>{oicSummaryData?.oic_title || 'මධ්‍යස්ථාන භාර නිලධාරී'} ({oicSummaryData?.oic_name || 'නම ඇතුළත් කර නැත'})</span>
+                          </div>
+                          <div className="text-xs text-indigo-200 flex items-center gap-1.5 mt-0.5">
+                            <Phone className="w-3.5 h-3.5 text-indigo-400" />
+                            <span>{oicSummaryData?.phone || 'දුරකථන අංකය ඇතුළත් කර නැත (Settings වලින් සකසන්න)'}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        {oicSummaryData?.phone && (
+                          <a
+                            href={`sms:${oicSummaryData.phone}?body=${encodeURIComponent(oicSummaryData?.message || '')}`}
+                            className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-lg shadow-xs flex items-center gap-1.5 transition-colors"
+                          >
+                            <Smartphone className="w-3.5 h-3.5" /> Send SMS Now
+                          </a>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard.writeText(oicSummaryData?.message || '');
+                            setCopiedOicMsgToast(true);
+                            setTimeout(() => setCopiedOicMsgToast(false), 3000);
+                          }}
+                          className="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white text-xs font-bold rounded-lg border border-white/10 flex items-center gap-1.5 transition-colors"
+                        >
+                          <Copy className="w-3.5 h-3.5" /> {copiedOicMsgToast ? '✓ Copied!' : 'Copy Message'}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* 4 Attendance Metrics */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                      <div className="p-3 rounded-xl bg-white/5 border border-white/10 text-center">
+                        <div className="text-[11px] text-slate-300 font-medium">මුළු ලියාපදිංචි</div>
+                        <div className="text-xl font-black text-white mt-0.5">{oicSummaryData?.total_students || 0}</div>
+                      </div>
+                      <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-center">
+                        <div className="text-[11px] text-emerald-300 font-medium">පැමිණි සිසුන්</div>
+                        <div className="text-xl font-black text-emerald-400 mt-0.5">{oicSummaryData?.present_count || 0}</div>
+                      </div>
+                      <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-center">
+                        <div className="text-[11px] text-rose-300 font-medium">නොපැමිණි සිසුන්</div>
+                        <div className="text-xl font-black text-rose-400 mt-0.5">{oicSummaryData?.absent_count || 0}</div>
+                      </div>
+                      <div className="p-3 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-center">
+                        <div className="text-[11px] text-indigo-300 font-medium">පැමිණීමේ අනුපාතය</div>
+                        <div className="text-xl font-black text-indigo-300 mt-0.5">{oicSummaryData?.attendance_percentage || 0}%</div>
+                      </div>
+                    </div>
+
+                    {/* Sinhala Message Preview */}
+                    <div className="space-y-1.5">
+                      <div className="text-[11px] font-bold text-indigo-300 uppercase tracking-wider">
+                        ම.භා.නි වෙත යැවෙන සිංහල කෙටි පණිවුඩය (SMS Message Preview):
+                      </div>
+                      <div className="p-3.5 rounded-xl bg-slate-950/80 border border-white/10 font-mono text-xs text-slate-200 whitespace-pre-line leading-relaxed select-all">
+                        {oicSummaryData?.message}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* iPhone 9:00 AM Shortcut Box for OIC */}
+                  <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold">
+                          📱
+                        </div>
+                        <div>
+                          <h4 className="font-bold text-sm text-slate-800">
+                            iPhone 9:00 AM Automatic SMS to OIC (ම.භා.නි)
+                          </h4>
+                          <p className="text-xs text-slate-500">
+                            දිනපතා පෙරවරු 9.00 ට ඔබගේ iPhone එකෙන්ම මෙම පණිවුඩය මධ්‍යස්ථාන භාර නිලධාරී තුමා වෙත ස්වයංක්‍රීයව යැවීමට මෙම ලින්ක් එක භාවිතා කරන්න:
+                          </p>
+                        </div>
+                      </div>
+                      <span className="px-2 py-0.5 rounded text-[10px] font-black bg-indigo-50 text-indigo-700 border border-indigo-200">
+                        OIC FEED
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        readOnly
+                        value="https://nysc-server.onrender.com/api/auto-sms/oic-summary"
+                        className="w-full text-xs bg-slate-50 text-indigo-700 font-mono px-3 py-2 rounded-lg border border-slate-300 select-all"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          navigator.clipboard.writeText('https://nysc-server.onrender.com/api/auto-sms/oic-summary');
+                          setCopiedOicUrlToast(true);
+                          setTimeout(() => setCopiedOicUrlToast(false), 3000);
+                        }}
+                        className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold shrink-0 transition-colors flex items-center gap-1.5"
+                      >
+                        {copiedOicUrlToast ? <><Check className="w-3.5 h-3.5" /> Copied!</> : <><Copy className="w-3.5 h-3.5" /> Copy URL</>}
+                      </button>
+                    </div>
+
+                    <div className="p-3 bg-slate-50 rounded-xl text-xs text-slate-600 space-y-1 border border-slate-200">
+                      <div className="font-bold text-slate-800">iPhone Shortcut සකස් කරගන්නා ආකාරය (පියවර 3):</div>
+                      <p>1. iPhone <strong>Shortcuts</strong> ඇප් එකේ <strong>Automation</strong> ➔ <strong>New Automation (+)</strong> ➔ <strong>9:00 AM (Mon-Fri)</strong> තෝරන්න.</p>
+                      <p>2. Action 1: <strong>Get Contents of URL</strong> ➔ ඉහත ලින්ක් එක Paste කරන්න.</p>
+                      <p>3. Action 2: <strong>Get Dictionary Value</strong> (Key: <code>message</code> in <code>Contents of URL</code>), Action 3: <strong>Send Message</strong> (Recipients: <code>{oicSummaryData?.phone || 'OIC Phone Number'}</code>). "Show When Run" <strong>OFF</strong> කරන්න.</p>
+                    </div>
                   </div>
                 </div>
               )}

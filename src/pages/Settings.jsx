@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Settings as SettingsIcon, Save, CheckCircle2, Shield } from 'lucide-react';
-import { api } from '../api';
+import { Settings as SettingsIcon, Save, CheckCircle2, Shield, Phone, MessageSquare, Copy, Check, ExternalLink, Sparkles } from 'lucide-react';
+import { api, API_ORIGIN } from '../api';
 
 export default function Settings() {
   const [settings, setSettings] = useState({
@@ -11,6 +11,7 @@ export default function Settings() {
     teacher_phone: '',
     center_in_charge_name: '',
     center_in_charge_title: 'මධ්‍යස්ථාන භාර නිලධාරී',
+    center_in_charge_phone: '',
     course_title: '',
     org_name_si: 'ජාතික තරුණ සේවා සභාව',
     centre_name_si: 'තාක්ෂණික පුහුණු මධ්‍යස්ථානය - අකුරැස්ස',
@@ -19,6 +20,7 @@ export default function Settings() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [savedSuccess, setSavedSuccess] = useState(false);
+  const [copiedOicUrl, setCopiedOicUrl] = useState(false);
   const [profileForm, setProfileForm] = useState({
     name: '',
     email: '',
@@ -197,19 +199,51 @@ export default function Settings() {
           </div>
         </div>
 
-        <div className="border-b pt-4 pb-3 font-bold text-sm text-slate-800">
-          Institute & Approver Details (අනුමත කළේ)
+        <div className="border-b pt-4 pb-3 flex items-center justify-between">
+          <div>
+            <div className="font-bold text-sm text-slate-800 flex items-center gap-1.5">
+              <span>මධ්‍යස්ථාන භාර නිලධාරී (Officer-in-Charge / OIC) &amp; Daily SMS</span>
+              <span className="text-[10px] bg-indigo-50 text-indigo-700 border border-indigo-200 px-2 py-0.5 rounded-full font-bold">
+                ම.භා.නි
+              </span>
+            </div>
+            <p className="text-xs text-slate-500 mt-0.5">
+              මධ්‍යස්ථාන භාර නිලධාරී විස්තර සහ දිනපතා පෙරවරු 9.00 ට යැවෙන දෛනික පැමිණීමේ SMS වාර්තාව
+            </p>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">Centre in Charge (නම):</label>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">
+              Centre in Charge Name (මධ්‍යස්ථාන භාර නිලධාරී නම):
+            </label>
             <input
               type="text"
+              placeholder="e.g. ඩබ්. ඒ. සිරිපාල මයා / Mr. W. A. Siripala"
               value={settings.center_in_charge_name}
               onChange={(e) => setSettings({ ...settings, center_in_charge_name: e.target.value })}
-              className="w-full border rounded-lg p-2 text-sm"
+              className="w-full border rounded-lg p-2 text-sm font-medium"
             />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">
+              OIC Mobile Number (දුරකථන අංකය - SMS සඳහා):
+            </label>
+            <div className="relative">
+              <input
+                type="tel"
+                placeholder="0771234567"
+                value={settings.center_in_charge_phone || ''}
+                onChange={(e) => setSettings({ ...settings, center_in_charge_phone: e.target.value })}
+                className="w-full border rounded-lg p-2 pl-8 text-sm font-mono font-bold text-slate-900"
+              />
+              <Phone className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-3" />
+            </div>
+            <span className="text-[10px] text-slate-400 mt-0.5 block">
+              පෙරවරු 9.00 ට දෛනික පැමිණි/නොපැමිණි සිසුන් ගණන මෙම අංකයට SMS මගින් යැවේ.
+            </span>
           </div>
 
           <div>
@@ -232,6 +266,58 @@ export default function Settings() {
             />
           </div>
 
+          {/* OIC Apple Shortcut Feed Banner */}
+          <div className="sm:col-span-2 p-3.5 rounded-xl bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 text-white border border-indigo-500/30 shadow-xs space-y-2.5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="p-1 rounded-md bg-indigo-500/20 text-indigo-300">
+                  <MessageSquare className="w-4 h-4" />
+                </span>
+                <span className="font-bold text-xs text-white">
+                  ම.භා.නි වෙත දෛනික පැමිණීමේ වාර්තාව (OIC 9:00 AM Attendance SMS Shortcut)
+                </span>
+              </div>
+              <a
+                href="https://nysc-server.onrender.com/api/auto-sms/oic-summary"
+                target="_blank"
+                rel="noreferrer"
+                className="text-[10px] text-indigo-300 hover:text-white flex items-center gap-1 font-semibold"
+              >
+                <ExternalLink className="w-3 h-3" /> Test OIC Feed
+              </a>
+            </div>
+
+            <p className="text-[11px] text-indigo-200/90 leading-relaxed">
+              මධ්‍යස්ථාන භාර නිලධාරී තුමා වෙත අද දින පන්තියට පැමිණි සහ නොපැමිණි සිසුන් ගණන සිංහලෙන් SMS මගින් යැවීමට පහත Shortcut URL එක ඔබගේ iPhone Shortcut එකට ඇතුළත් කරන්න:
+            </p>
+
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                readOnly
+                value="https://nysc-server.onrender.com/api/auto-sms/oic-summary"
+                className="w-full text-[11px] bg-slate-950/80 text-emerald-400 font-mono px-2.5 py-1.5 rounded-lg border border-indigo-500/30 select-all"
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  navigator.clipboard.writeText('https://nysc-server.onrender.com/api/auto-sms/oic-summary');
+                  setCopiedOicUrl(true);
+                  setTimeout(() => setCopiedOicUrl(false), 3000);
+                }}
+                className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-bold shrink-0 transition-colors flex items-center gap-1"
+              >
+                {copiedOicUrl ? <><Check className="w-3 h-3" /> Copied!</> : <><Copy className="w-3 h-3" /> Copy URL</>}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className="border-b pt-4 pb-3 font-bold text-sm text-slate-800">
+          General Institute &amp; Course Details
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="block text-xs font-semibold text-slate-700 mb-1">Target Hours / Month (මාසික ඉලක්ක පැය):</label>
             <input
