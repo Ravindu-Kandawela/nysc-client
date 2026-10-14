@@ -20,7 +20,6 @@ export default function Settings() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [savedSuccess, setSavedSuccess] = useState(false);
-  const [copiedOicUrl, setCopiedOicUrl] = useState(false);
   const [profileForm, setProfileForm] = useState({
     name: '',
     email: '',
@@ -264,52 +263,6 @@ export default function Settings() {
               onChange={(e) => setSettings({ ...settings, approver_name: e.target.value })}
               className="w-full border rounded-lg p-2 text-sm"
             />
-          </div>
-
-          {/* OIC Apple Shortcut Feed Banner */}
-          <div className="sm:col-span-2 p-3.5 rounded-xl bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 text-white border border-indigo-500/30 shadow-xs space-y-2.5">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="p-1 rounded-md bg-indigo-500/20 text-indigo-300">
-                  <MessageSquare className="w-4 h-4" />
-                </span>
-                <span className="font-bold text-xs text-white">
-                  ම.භා.නි වෙත දෛනික පැමිණීමේ වාර්තාව (OIC 9:00 AM Attendance SMS Shortcut)
-                </span>
-              </div>
-              <a
-                href="https://nysc-server.onrender.com/api/auto-sms/oic-summary"
-                target="_blank"
-                rel="noreferrer"
-                className="text-[10px] text-indigo-300 hover:text-white flex items-center gap-1 font-semibold"
-              >
-                <ExternalLink className="w-3 h-3" /> Test OIC Feed
-              </a>
-            </div>
-
-            <p className="text-[11px] text-indigo-200/90 leading-relaxed">
-              මධ්‍යස්ථාන භාර නිලධාරී තුමා වෙත අද දින පන්තියට පැමිණි සහ නොපැමිණි සිසුන් ගණන සිංහලෙන් SMS මගින් යැවීමට පහත Shortcut URL එක ඔබගේ iPhone Shortcut එකට ඇතුළත් කරන්න:
-            </p>
-
-            <div className="flex items-center gap-2">
-              <input
-                type="text"
-                readOnly
-                value="https://nysc-server.onrender.com/api/auto-sms/oic-summary"
-                className="w-full text-[11px] bg-slate-950/80 text-emerald-400 font-mono px-2.5 py-1.5 rounded-lg border border-indigo-500/30 select-all"
-              />
-              <button
-                type="button"
-                onClick={() => {
-                  navigator.clipboard.writeText('https://nysc-server.onrender.com/api/auto-sms/oic-summary');
-                  setCopiedOicUrl(true);
-                  setTimeout(() => setCopiedOicUrl(false), 3000);
-                }}
-                className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-bold shrink-0 transition-colors flex items-center gap-1"
-              >
-                {copiedOicUrl ? <><Check className="w-3 h-3" /> Copied!</> : <><Copy className="w-3 h-3" /> Copy URL</>}
-              </button>
-            </div>
           </div>
         </div>
 
