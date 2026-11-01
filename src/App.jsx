@@ -15,6 +15,7 @@ import Batches from './pages/Batches';
 import Students from './pages/Students';
 import Holidays from './pages/Holidays';
 import Settings from './pages/Settings';
+import MyAttendance from './pages/MyAttendance';
 import Login from './pages/Login';
 
 import { getToken, api } from './api';
@@ -91,6 +92,7 @@ export default function App() {
         }>
           <Route path="/" element={<Dashboard batchId={activeBatchId} />} />
           <Route path="/attendance" element={<Attendance batchId={activeBatchId} />} />
+          <Route path="/my-attendance" element={<MyAttendance />} />
           <Route path="/plan" element={<LessonPlan batchId={activeBatchId} />} />
           <Route path="/checklists" element={<Checklists batchId={activeBatchId} />} />
           <Route path="/diary" element={<WorkDiary batchId={activeBatchId} />} />

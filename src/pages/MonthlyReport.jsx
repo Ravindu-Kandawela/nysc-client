@@ -4,6 +4,7 @@ import {
   Calendar, Save, Download, RefreshCw, Clock, 
   DollarSign, CheckCheck, ChevronRight, Layers, Award
 } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { api, getToken } from '../api';
 
 export default function MonthlyReport({ batchId }) {
@@ -428,8 +429,15 @@ export default function MonthlyReport({ batchId }) {
                         <td className="p-2.5 font-bold text-slate-900 whitespace-nowrap">{r.date}</td>
                         <td className="p-2.5 text-slate-800">{r.summary}</td>
                         <td className="p-2.5 text-slate-600">{r.activities}</td>
-                        <td className="p-2.5 text-center text-slate-500 font-mono text-[11px]">{r.time_text}</td>
-                        <td className="p-2.5 text-right font-bold text-slate-900">{r.hours} h</td>
+                        <td className="p-2.5 text-center text-slate-500 font-mono text-[11px]">
+                          {r.time_text || <Link to="/my-attendance" className="text-amber-600 font-sans font-semibold hover:underline">+ add In/Out</Link>}
+                        </td>
+                        <td className="p-2.5 text-right font-bold text-slate-900">
+                          {r.hours} h
+                          {r.has_attendance && r.hours !== r.diary_hours && (
+                            <div className="text-[10px] font-normal text-slate-400">diary {r.diary_hours}h</div>
+                          )}
+                        </td>
                       </tr>
                     ))
                   )}

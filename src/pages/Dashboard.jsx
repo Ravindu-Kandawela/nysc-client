@@ -16,16 +16,17 @@ export default function Dashboard({ batchId }) {
   const [unresolved, setUnresolved] = useState([]);
   const [upcoming, setUpcoming] = useState([]);
   const [resolving, setResolving] = useState(false);
+  const today = new Date().toISOString().slice(0, 10);
+
   const [statusModalOpen, setStatusModalOpen] = useState(false);
   const [statusForm, setStatusForm] = useState({
+    date: today,
     status: 'teacher_absent',
     reason: '',
     hours_delivered: 0,
     strategy: 'shift'
   });
   const [replanPreview, setReplanPreview] = useState(null);
-
-  const today = new Date().toISOString().slice(0, 10);
 
   const fetchData = async () => {
     if (!batchId) return;
@@ -91,12 +92,12 @@ export default function Dashboard({ batchId }) {
     }
   };
 
-  const handlePreviewReplan = async (status, hours) => {
+  const handlePreviewReplan = async (status, hours, targetDate = statusForm.date || today, strat = statusForm.strategy) => {
     try {
       const res = await api.post(`/batches/${batchId}/plan/replan/preview`, {
-        disruptedDate: today,
+        disruptedDate: targetDate,
         hoursDelivered: Number(hours) || 0,
-        strategy: statusForm.strategy
+        strategy: strat
       });
       setReplanPreview(res);
     } catch (e) {
@@ -106,8 +107,9 @@ export default function Dashboard({ batchId }) {
 
   const handleConfirmDisruption = async () => {
     try {
+      const targetDate = statusForm.date || today;
       await api.post(`/batches/${batchId}/plan/replan/confirm`, {
-        disruptedDate: today,
+        disruptedDate: targetDate,
         status: statusForm.status,
         reason: statusForm.reason || 'Disruption recorded',
         hoursDelivered: Number(statusForm.hours_delivered) || 0,
@@ -159,7 +161,24 @@ export default function Dashboard({ batchId }) {
               </div>
             </div>
 
-            <div className="flex items-center gap-2 shrink-0">
+            <div className="flex flex-wrap items-center gap-2 shrink-0">
+              <button
+                onClick={() => {
+                  const firstDate = unresolved[0]?.sdate || today;
+                  setStatusForm({
+                    date: firstDate,
+                    status: 'teacher_absent',
+                    reason: '',
+                    hours_delivered: 0,
+                    strategy: 'shift'
+                  });
+                  setStatusModalOpen(true);
+                  handlePreviewReplan('teacher_absent', 0, firstDate, 'shift');
+                }}
+                className="px-3.5 py-1.5 bg-white hover:bg-amber-100 text-amber-900 border border-amber-300 text-xs font-semibold rounded-lg shadow-xs transition-colors flex items-center gap-1.5"
+              >
+                Mark Absent / Class Off
+              </button>
               <button
                 onClick={handleBulkResolve}
                 disabled={resolving}
@@ -368,7 +387,21 @@ export default function Dashboard({ batchId }) {
 
             <div className="space-y-3">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">What happened today?</label>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Date:</label>
+                <input
+                  type="date"
+                  value={statusForm.date || today}
+                  onChange={(e) => {
+                    const d = e.target.value;
+                    setStatusForm({ ...statusForm, date: d });
+                    handlePreviewReplan(statusForm.status, statusForm.hours_delivered, d, statusForm.strategy);
+                  }}
+                  className="w-full border rounded-lg p-2 text-sm"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">What happened on this day?</label>
                 <select
                   value={statusForm.status}
                   onChange={(e) => {

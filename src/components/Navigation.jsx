@@ -3,7 +3,7 @@ import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { 
   Calendar, CheckSquare, BookOpen, CheckCircle, 
   Menu, X, Users, BookMarked, CalendarDays, 
-  FileText, Settings, LogOut, Send, Award
+  FileText, Settings, LogOut, Send, Award, Clock
 } from 'lucide-react';
 import { api, getUser } from '../api';
 
@@ -25,6 +25,7 @@ export default function Navigation() {
   ];
 
   const moreItems = [
+    { to: '/my-attendance', label: 'My Attendance (In/Out)', icon: Clock },
     { to: '/diary', label: 'Work Diary', icon: BookMarked },
     { to: '/assignments', label: 'Assignments', icon: Send },
     { to: '/monthly-report', label: 'Monthly Report (NYSC)', icon: FileText },
