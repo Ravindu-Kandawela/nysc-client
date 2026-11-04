@@ -27,9 +27,9 @@ function ProtectedLayout({ batches, activeBatchId, onSelectBatch }) {
   }
 
   return (
-    <div className="min-h-screen flex bg-slate-50 text-slate-900">
+    <div className="h-screen overflow-hidden flex bg-slate-50 text-slate-900">
       <Navigation />
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 h-screen overflow-y-auto overscroll-contain">
         <Header 
           batches={batches} 
           activeBatchId={activeBatchId} 
