@@ -270,22 +270,22 @@ export default function Dashboard({ batchId }) {
           <div className="flex items-center gap-2">
             <button
               onClick={() => navigate('/attendance')}
-              className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-lg shadow-xs transition-colors flex items-center gap-1.5"
+              className="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold rounded-lg shadow-2xs transition-colors flex items-center gap-1.5"
             >
               <CheckSquare className="w-3.5 h-3.5" /> Mark Attendance
             </button>
             <button
               onClick={() => navigate('/diary')}
-              className="px-3 py-1.5 bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold rounded-lg shadow-xs transition-colors flex items-center gap-1.5"
+              className="px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 text-xs font-semibold rounded-lg shadow-2xs transition-colors flex items-center gap-1.5"
             >
-              <BookMarked className="w-3.5 h-3.5" /> Work Diary
+              <BookMarked className="w-3.5 h-3.5 text-slate-500" /> Work Diary
             </button>
             <button
               onClick={() => {
                 setStatusModalOpen(true);
                 handlePreviewReplan('teacher_absent', 0);
               }}
-              className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-lg border border-slate-300 transition-colors"
+              className="px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-700 text-xs font-semibold rounded-lg border border-slate-300 shadow-2xs transition-colors"
             >
               Change Day Status
             </button>

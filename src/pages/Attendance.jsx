@@ -711,22 +711,22 @@ export default function Attendance({ batchId }) {
 
           {/* Absentee Alert Banner (9:00 AM Parent Alerting) */}
           {absentCount > 0 && (
-            <div className="bg-gradient-to-r from-rose-50 via-red-50/70 to-amber-50 border border-rose-300 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs animate-in fade-in">
+            <div className="bg-white border border-slate-200 border-l-4 border-l-rose-600 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-rose-600 text-white flex items-center justify-center shrink-0 font-bold shadow-xs">
-                  <Bell className="w-5 h-5 animate-pulse" />
+                <div className="w-9 h-9 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 flex items-center justify-center shrink-0 font-bold">
+                  <Bell className="w-4 h-4" />
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="font-extrabold text-slate-900 text-sm">
+                    <span className="font-bold text-slate-900 text-sm">
                       {absentCount} Students Absent Today (9:00 AM Roll Call)
                     </span>
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-200">
+                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
                       දෙමාපිය දැනුම්දීම්
                     </span>
                   </div>
                   <p className="text-xs text-slate-600 mt-0.5">
-                    Send 100% free automated WhatsApp &amp; SMS alerts to parents of students absent as of 9:00 AM.
+                    Send WhatsApp &amp; SMS notifications to parents of students marked absent as of 9:00 AM.
                   </p>
                 </div>
               </div>
@@ -734,9 +734,9 @@ export default function Attendance({ batchId }) {
               <button
                 type="button"
                 onClick={() => setAlertModalOpen(true)}
-                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-lg shadow-sm transition-all flex items-center justify-center gap-2 shrink-0 btn-press"
+                className="px-3.5 py-2 bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold rounded-lg shadow-2xs transition-all flex items-center justify-center gap-1.5 shrink-0 btn-press"
               >
-                <MessageCircle className="w-4 h-4" /> Notify Parents (Free)
+                <MessageCircle className="w-3.5 h-3.5" /> Notify Parents
               </button>
             </div>
           )}

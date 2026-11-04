@@ -40,69 +40,73 @@ export default function Navigation() {
   return (
     <>
       {/* Desktop Sidebar */}
-      <aside className="hidden md:flex flex-col w-64 bg-slate-900 text-slate-300 h-screen sticky top-0 border-r border-slate-800 shrink-0 select-none">
-        <div className="p-5 border-b border-slate-800 flex items-center gap-3 shrink-0">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 to-indigo-500 flex items-center justify-center text-white font-bold shadow-lg shadow-brand-500/20">
+      <aside className="hidden md:flex flex-col w-60 bg-[#181b20] text-slate-300 h-screen sticky top-0 border-r border-slate-800/80 shrink-0 select-none">
+        <div className="px-4 py-4 border-b border-slate-800/80 flex items-center gap-3 shrink-0">
+          <div className="w-9 h-9 rounded-lg bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-100 font-serif font-bold text-sm tracking-wider">
             NY
           </div>
-          <div>
-            <h1 className="font-bold text-white text-base leading-tight">NYSC Akuressa</h1>
-            <p className="text-xs text-slate-400">ICT NVQ-4 Teacher System</p>
+          <div className="min-w-0">
+            <h1 className="font-semibold text-slate-100 text-sm leading-tight truncate">NYSC Akuressa</h1>
+            <p className="text-[11px] text-slate-400 truncate mt-0.5">NVQ Level 4 · ICT Records</p>
           </div>
         </div>
 
-        <div className="p-3 flex-1 overflow-y-auto overscroll-contain">
-          <div className="text-[11px] font-semibold tracking-wider text-slate-500 uppercase px-3 py-2">
-            Daily Operations
+        <div className="px-2.5 py-3 flex-1 overflow-y-auto overscroll-contain space-y-5">
+          <div>
+            <div className="text-[10px] font-semibold tracking-wider text-slate-500 uppercase px-2.5 pb-1.5">
+              Daily Operations
+            </div>
+            <nav className="space-y-0.5">
+              {navItems.map(item => (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  end={item.end}
+                  className={({ isActive }) => `flex items-center gap-2.5 px-2.5 py-2 rounded-md text-[13px] transition-colors ${
+                    isActive 
+                      ? 'bg-slate-800/90 text-white font-semibold border-l-2 border-slate-200 pl-2' 
+                      : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200 font-medium'
+                  }`}
+                >
+                  <item.icon className="w-4 h-4 shrink-0 opacity-85" />
+                  {item.label}
+                </NavLink>
+              ))}
+            </nav>
           </div>
-          <nav className="space-y-1">
-            {navItems.map(item => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                end={item.end}
-                className={({ isActive }) => `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
-                  isActive 
-                    ? 'bg-brand-600 text-white shadow-sm shadow-brand-600/30' 
-                    : 'text-slate-300 hover:bg-slate-800/80 hover:text-white'
-                }`}
-              >
-                <item.icon className="w-4 h-4 shrink-0" />
-                {item.label}
-              </NavLink>
-            ))}
-          </nav>
 
-          <div className="text-[11px] font-semibold tracking-wider text-slate-500 uppercase px-3 pt-5 pb-2">
-            Records & Curriculum
+          <div>
+            <div className="text-[10px] font-semibold tracking-wider text-slate-500 uppercase px-2.5 pb-1.5">
+              Records &amp; Administration
+            </div>
+            <nav className="space-y-0.5">
+              {moreItems.map(item => (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  className={({ isActive }) => `flex items-center gap-2.5 px-2.5 py-2 rounded-md text-[13px] transition-colors ${
+                    isActive 
+                      ? 'bg-slate-800/90 text-white font-semibold border-l-2 border-slate-200 pl-2' 
+                      : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200 font-medium'
+                  }`}
+                >
+                  <item.icon className="w-4 h-4 shrink-0 opacity-85" />
+                  {item.label}
+                </NavLink>
+              ))}
+            </nav>
           </div>
-          <nav className="space-y-1">
-            {moreItems.map(item => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                className={({ isActive }) => `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
-                  isActive 
-                    ? 'bg-brand-600 text-white shadow-sm shadow-brand-600/30' 
-                    : 'text-slate-300 hover:bg-slate-800/80 hover:text-white'
-                }`}
-              >
-                <item.icon className="w-4 h-4 shrink-0" />
-                {item.label}
-              </NavLink>
-            ))}
-          </nav>
         </div>
 
-        <div className="mt-auto p-4 border-t border-slate-800 flex items-center justify-between text-xs shrink-0">
-          <div>
-            <div className="font-medium text-white truncate max-w-[140px]">{user?.name || 'Instructor'}</div>
-            <div className="text-slate-500 truncate max-w-[140px]">{user?.email || 'Akuressa TTC'}</div>
+        <div className="mt-auto px-4 py-3 border-t border-slate-800/80 flex items-center justify-between text-xs shrink-0 bg-[#14171b]">
+          <div className="min-w-0">
+            <div className="font-medium text-slate-200 truncate max-w-[145px]">{user?.name || 'Instructor'}</div>
+            <div className="text-[11px] text-slate-500 truncate max-w-[145px]">{user?.email || 'Akuressa TTC'}</div>
           </div>
           <button
             onClick={handleLogout}
-            title="Logout"
-            className="p-2 text-slate-400 hover:text-rose-400 hover:bg-slate-800 rounded-lg transition-colors"
+            title="Sign Out"
+            className="p-1.5 text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-md transition-colors"
           >
             <LogOut className="w-4 h-4" />
           </button>

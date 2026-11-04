@@ -223,84 +223,82 @@ export default function LessonPlan({ batchId }) {
       {/* Top Header & Global Actions */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2">
-            <h2 className="text-xl font-bold text-slate-900">NVQ-4 Lesson Plan &amp; Teaching Hours</h2>
-            <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-brand-50 text-brand-700 border border-brand-200">
+          <div className="flex items-center gap-2.5">
+            <h2 className="text-lg font-bold text-slate-900 tracking-tight">Master Lesson Plan &amp; Work Schedule</h2>
+            <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-slate-200/80 text-slate-700">
               NVQ Level 4
             </span>
           </div>
-          <p className="text-xs text-slate-500 mt-1">
-            Official NCS K72S004 Curriculum · ICT Technician · {totals.curriculumHours || 720} Total Hours
+          <p className="text-xs text-slate-500 mt-0.5">
+            National Competency Standard K72S004 · ICT Technician · {totals.curriculumHours || 720} Curriculum Hours
           </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          {/* Download Official PDF */}
-          <a
-            href={`/api/print/lesson-plan?batchId=${batchId}&format=pdf&token=${token}`}
-            target="_blank"
-            rel="noreferrer"
-            className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg shadow-xs transition-colors flex items-center gap-1.5 btn-press"
-          >
-            <Download className="w-3.5 h-3.5" /> Download PDF
-          </a>
+          {/* Document Export / Print Group */}
+          <div className="inline-flex flex-wrap items-center rounded-lg border border-slate-300 bg-white shadow-2xs divide-x divide-slate-200 overflow-hidden">
+            <a
+              href={`/api/print/lesson-plan?batchId=${batchId}&format=html&token=${token}`}
+              target="_blank"
+              rel="noreferrer"
+              className="px-3 py-1.5 hover:bg-slate-50 text-slate-700 text-xs font-semibold transition-colors flex items-center gap-1.5"
+              title="Print Master Lesson Plan"
+            >
+              <Printer className="w-3.5 h-3.5 text-slate-500" /> Lesson Plan
+            </a>
+            <a
+              href={`/api/print/lesson-plan?batchId=${batchId}&format=pdf&token=${token}`}
+              target="_blank"
+              rel="noreferrer"
+              className="px-2.5 py-1.5 hover:bg-slate-50 text-slate-700 text-xs font-semibold transition-colors flex items-center gap-1"
+              title="Download Lesson Plan PDF"
+            >
+              <Download className="w-3.5 h-3.5 text-slate-500" /> PDF
+            </a>
+            <a
+              href={`/api/print/work-plan?batchId=${batchId}&paperSize=${workPlanPaper}&format=html&token=${token}`}
+              target="_blank"
+              rel="noreferrer"
+              className="px-3 py-1.5 hover:bg-slate-50 text-slate-700 text-xs font-semibold transition-colors flex items-center gap-1.5"
+              title="Open Official Work Plan (Gantt Chart) Print Preview"
+            >
+              <BarChart3 className="w-3.5 h-3.5 text-slate-500" /> Work Plan
+            </a>
+            <a
+              href={`/api/print/work-plan?batchId=${batchId}&paperSize=${workPlanPaper}&format=pdf&token=${token}`}
+              target="_blank"
+              rel="noreferrer"
+              className="px-2.5 py-1.5 hover:bg-slate-50 text-slate-700 text-xs font-semibold transition-colors flex items-center gap-1"
+              title="Download Official Work Plan (Gantt Chart) as PDF"
+            >
+              <Download className="w-3.5 h-3.5 text-slate-500" /> PDF
+            </a>
+            <a
+              href={`/api/print/timetable?batchId=${batchId}&format=html&token=${token}`}
+              target="_blank"
+              rel="noreferrer"
+              className="px-3 py-1.5 hover:bg-slate-50 text-slate-700 text-xs font-semibold transition-colors flex items-center gap-1.5"
+              title="Print Monthly Timetable"
+            >
+              <Calendar className="w-3.5 h-3.5 text-slate-500" /> Timetable
+            </a>
+          </div>
 
-          {/* Print Lesson Plan */}
-          <a
-            href={`/api/print/lesson-plan?batchId=${batchId}&format=html&token=${token}`}
-            target="_blank"
-            rel="noreferrer"
-            className="px-3 py-1.5 bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold rounded-lg shadow-xs transition-colors flex items-center gap-1.5 btn-press"
-          >
-            <Printer className="w-3.5 h-3.5" /> Print Lesson Plan
-          </a>
-
-          {/* Print Timetable */}
-          <a
-            href={`/api/print/timetable?batchId=${batchId}&format=html&token=${token}`}
-            target="_blank"
-            rel="noreferrer"
-            className="px-3 py-1.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 text-xs font-bold rounded-lg shadow-xs transition-colors flex items-center gap-1.5"
-          >
-            <Calendar className="w-3.5 h-3.5 text-slate-500" /> Timetable
-          </a>
-
-          {/* Work Plan (Gantt Chart) Print & PDF */}
-          <a
-            href={`/api/print/work-plan?batchId=${batchId}&paperSize=${workPlanPaper}&format=html&token=${token}`}
-            target="_blank"
-            rel="noreferrer"
-            className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-lg shadow-xs transition-colors flex items-center gap-1.5 btn-press"
-            title="Open Official Work Plan (Gantt Chart) Print Preview"
-          >
-            <BarChart3 className="w-3.5 h-3.5" /> Print Work Plan
-          </a>
-          <a
-            href={`/api/print/work-plan?batchId=${batchId}&paperSize=${workPlanPaper}&format=pdf&token=${token}`}
-            target="_blank"
-            rel="noreferrer"
-            className="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-xs font-bold rounded-lg shadow-xs transition-colors flex items-center gap-1.5 btn-press"
-            title="Download Official Work Plan (Gantt Chart) as PDF"
-          >
-            <Download className="w-3.5 h-3.5" /> Work Plan PDF
-          </a>
-
-          {/* Re-plan disruption */}
+          {/* Schedule Adjustment Actions */}
           <button
             onClick={() => {
               setReplanOpen(true);
               handlePreviewReplan();
             }}
-            className="px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5"
+            className="px-3 py-1.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 text-xs font-semibold rounded-lg transition-colors flex items-center gap-1.5 shadow-2xs"
           >
-            <RotateCw className="w-3.5 h-3.5" /> Re-plan
+            <RotateCw className="w-3.5 h-3.5 text-slate-500" /> Adjust / Re-plan
           </button>
 
-          {/* Regenerate Plan */}
           <button
             onClick={handleGeneratePlan}
             disabled={generating}
-            className="px-3 py-1.5 bg-brand-50 hover:bg-brand-100 text-brand-700 border border-brand-200 text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5"
+            className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded-lg transition-colors flex items-center gap-1.5 shadow-2xs"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${generating ? 'animate-spin' : ''}`} /> 
             {generating ? 'Generating...' : 'Regenerate'}
@@ -310,103 +308,103 @@ export default function LessonPlan({ batchId }) {
 
       {/* KPI Status Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-xs">
-          <div className="flex items-center gap-2 text-xs font-bold text-slate-500">
-            <BookOpen className="w-4 h-4 text-brand-600" /> Curriculum Total
+        <div className="bg-white border border-slate-200/90 rounded-lg p-3.5">
+          <div className="text-[11px] font-medium text-slate-500">
+            Curriculum Total
           </div>
-          <div className="text-2xl font-extrabold text-slate-900 mt-1">
-            {totals.curriculumHours || 720} <span className="text-xs font-bold text-slate-400">Hours</span>
+          <div className="text-xl font-bold text-slate-900 mt-1 tabular-nums">
+            {totals.curriculumHours || 720} <span className="text-xs font-medium text-slate-400">hrs</span>
           </div>
-          <div className="text-[11px] font-semibold text-slate-500 mt-1">
+          <div className="text-[11px] text-slate-500 mt-1">
             16 Modules (Theory + Practical)
           </div>
         </div>
 
-        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-xs">
-          <div className="flex items-center gap-2 text-xs font-bold text-slate-500">
-            <Calendar className="w-4 h-4 text-indigo-600" /> Planned Sessions
+        <div className="bg-white border border-slate-200/90 rounded-lg p-3.5">
+          <div className="text-[11px] font-medium text-slate-500">
+            Planned Schedule
           </div>
-          <div className="text-2xl font-extrabold text-indigo-700 mt-1">
-            {totals.planned || 0} <span className="text-xs font-bold text-slate-400">Hours</span>
+          <div className="text-xl font-bold text-slate-900 mt-1 tabular-nums">
+            {totals.planned || 0} <span className="text-xs font-medium text-slate-400">hrs</span>
           </div>
-          <div className="text-[11px] font-semibold text-slate-500 mt-1">
+          <div className="text-[11px] text-slate-500 mt-1 tabular-nums">
             {totals.teachingDays || 0} Teaching Days
           </div>
         </div>
 
-        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-xs">
-          <div className="flex items-center gap-2 text-xs font-bold text-slate-500">
-            <Clock className="w-4 h-4 text-emerald-600" /> Hours Taught to Date
+        <div className="bg-white border border-slate-200/90 rounded-lg p-3.5">
+          <div className="text-[11px] font-medium text-slate-500">
+            Delivered to Date
           </div>
-          <div className="text-2xl font-extrabold text-emerald-700 mt-1">
-            {totals.delivered || 0} <span className="text-xs font-bold text-slate-400">Hours</span>
+          <div className="text-xl font-bold text-emerald-700 mt-1 tabular-nums">
+            {totals.delivered || 0} <span className="text-xs font-medium text-slate-400">hrs</span>
           </div>
-          <div className="text-[11px] font-semibold text-emerald-600 mt-1 flex items-center gap-1">
-            <CheckCircle2 className="w-3 h-3" /> Recorded from Day Log
+          <div className="text-[11px] text-slate-500 mt-1">
+            Synced with Daily Log
           </div>
         </div>
 
-        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-xs">
-          <div className="flex items-center gap-2 text-xs font-bold text-slate-500">
-            <Award className="w-4 h-4 text-amber-600" /> Completion Rate
+        <div className="bg-white border border-slate-200/90 rounded-lg p-3.5">
+          <div className="text-[11px] font-medium text-slate-500">
+            Course Completion
           </div>
-          <div className="text-2xl font-extrabold text-slate-900 mt-1">
+          <div className="text-xl font-bold text-slate-900 mt-1 tabular-nums">
             {completionPct}%
           </div>
           <div className="w-full bg-slate-100 rounded-full h-1.5 mt-2 overflow-hidden">
             <div 
-              className="bg-emerald-500 h-full rounded-full transition-all duration-500" 
+              className="bg-brand-600 h-full rounded-full transition-all duration-500" 
               style={{ width: `${completionPct}%` }}
             />
           </div>
         </div>
       </div>
 
-      {/* Tabs Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-2">
-        <div className="flex items-center gap-2">
+      {/* Segmented Tabs & Filter Bar */}
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-3">
+        <div className="inline-flex flex-wrap items-center gap-1 bg-slate-200/70 p-1 rounded-lg border border-slate-200">
           <button
             onClick={() => setActiveTab('modules')}
-            className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-colors flex items-center gap-2 ${
+            className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all flex items-center gap-1.5 ${
               activeTab === 'modules'
-                ? 'bg-brand-600 text-white shadow-xs'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                ? 'bg-white text-slate-900 shadow-2xs'
+                : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            <BookOpen className="w-3.5 h-3.5" /> NVQ-4 Modules &amp; Lesson Content
+            <BookOpen className="w-3.5 h-3.5" /> Modules &amp; Content
           </button>
 
           <button
             onClick={() => setActiveTab('workplan')}
-            className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-colors flex items-center gap-2 ${
+            className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all flex items-center gap-1.5 ${
               activeTab === 'workplan'
-                ? 'bg-indigo-600 text-white shadow-xs'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                ? 'bg-white text-slate-900 shadow-2xs'
+                : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            <BarChart3 className="w-3.5 h-3.5" /> Work Plan (Gantt Chart)
+            <BarChart3 className="w-3.5 h-3.5" /> Work Plan (Gantt)
           </button>
 
           <button
             onClick={() => setActiveTab('schedule')}
-            className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-colors flex items-center gap-2 ${
+            className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all flex items-center gap-1.5 ${
               activeTab === 'schedule'
-                ? 'bg-brand-600 text-white shadow-xs'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                ? 'bg-white text-slate-900 shadow-2xs'
+                : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            <Calendar className="w-3.5 h-3.5" /> Day-by-Day Teaching Schedule
+            <Calendar className="w-3.5 h-3.5" /> Daily Schedule
           </button>
 
           <button
             onClick={() => setActiveTab('monthly')}
-            className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-colors flex items-center gap-2 ${
+            className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all flex items-center gap-1.5 ${
               activeTab === 'monthly'
-                ? 'bg-brand-600 text-white shadow-xs'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                ? 'bg-white text-slate-900 shadow-2xs'
+                : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            <BarChart3 className="w-3.5 h-3.5" /> Monthly Targets (120h)
+            <Clock className="w-3.5 h-3.5" /> Monthly Targets (120h)
           </button>
         </div>
 

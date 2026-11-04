@@ -102,55 +102,51 @@ export default function MonthlyReport({ batchId }) {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          {/* Download Official PDF */}
-          <a
-            href={`/api/print/monthly-report?batchId=${batchId}&from=${from}&to=${to}&format=pdf&token=${token}`}
-            target="_blank"
-            rel="noreferrer"
-            className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg shadow-xs transition-colors flex items-center gap-1.5 btn-press"
-            title="Download Official 2-Page Progress Report PDF (උපදේශක සටහන්)"
-          >
-            <Download className="w-3.5 h-3.5" /> Download Report PDF
-          </a>
-
-          {/* Print Official Form */}
-          <a
-            href={`/api/print/monthly-report?batchId=${batchId}&from=${from}&to=${to}&format=html&token=${token}`}
-            target="_blank"
-            rel="noreferrer"
-            className="px-3.5 py-1.5 bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold rounded-lg shadow-xs transition-colors flex items-center gap-1.5 btn-press"
-            title="Print Official 2-Page Progress Report Form"
-          >
-            <Printer className="w-3.5 h-3.5" /> Print Report Form
-          </a>
-
-          {/* Download Monthly Plan Calendar Grid (Monthly Plan October.pdf format) */}
-          <a
-            href={`/api/print/monthly-plan?batchId=${batchId}&from=${from}&to=${to}&format=pdf&token=${token}`}
-            target="_blank"
-            rel="noreferrer"
-            className="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-lg shadow-xs transition-colors flex items-center gap-1.5 btn-press"
-            title="Download 5-Column Monthly Plan Calendar Grid PDF"
-          >
-            <Download className="w-3.5 h-3.5" /> Monthly Plan Grid (PDF)
-          </a>
-
-          {/* Print Monthly Plan Calendar Grid */}
-          <a
-            href={`/api/print/monthly-plan?batchId=${batchId}&from=${from}&to=${to}&format=html&token=${token}`}
-            target="_blank"
-            rel="noreferrer"
-            className="px-3.5 py-1.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 text-xs font-bold rounded-lg shadow-xs transition-colors flex items-center gap-1.5"
-            title="Print 5-Column Monthly Plan Calendar Grid"
-          >
-            <Printer className="w-3.5 h-3.5 text-slate-500" /> Plan Grid Print
-          </a>
+          {/* Unified Document Export Group */}
+          <div className="inline-flex rounded-lg border border-slate-300 bg-white shadow-2xs overflow-hidden divide-x divide-slate-200">
+            <a
+              href={`/api/print/monthly-report?batchId=${batchId}&from=${from}&to=${to}&format=html&token=${token}`}
+              target="_blank"
+              rel="noreferrer"
+              className="px-3 py-1.5 hover:bg-slate-50 text-slate-700 text-xs font-semibold transition-colors flex items-center gap-1.5"
+              title="Print Official 2-Page Progress Report Form"
+            >
+              <Printer className="w-3.5 h-3.5 text-slate-500" /> Report Form
+            </a>
+            <a
+              href={`/api/print/monthly-report?batchId=${batchId}&from=${from}&to=${to}&format=pdf&token=${token}`}
+              target="_blank"
+              rel="noreferrer"
+              className="px-2.5 py-1.5 hover:bg-slate-50 text-slate-600 text-xs font-semibold transition-colors flex items-center gap-1"
+              title="Download Official 2-Page Progress Report PDF (උපදේශක සටහන්)"
+            >
+              <Download className="w-3.5 h-3.5 text-slate-500" /> PDF
+            </a>
+            <a
+              href={`/api/print/monthly-plan?batchId=${batchId}&from=${from}&to=${to}&format=html&token=${token}`}
+              target="_blank"
+              rel="noreferrer"
+              className="px-3 py-1.5 hover:bg-slate-50 text-slate-700 text-xs font-semibold transition-colors flex items-center gap-1.5"
+              title="Print 5-Column Monthly Plan Calendar Grid"
+            >
+              <Printer className="w-3.5 h-3.5 text-slate-500" /> Plan Grid
+            </a>
+            <a
+              href={`/api/print/monthly-plan?batchId=${batchId}&from=${from}&to=${to}&format=pdf&token=${token}`}
+              target="_blank"
+              rel="noreferrer"
+              className="px-2.5 py-1.5 hover:bg-slate-50 text-slate-600 text-xs font-semibold transition-colors flex items-center gap-1"
+              title="Download 5-Column Monthly Plan Calendar Grid PDF"
+            >
+              <Download className="w-3.5 h-3.5 text-slate-500" /> PDF
+            </a>
+          </div>
 
           {/* Save / Confirm Snapshot */}
           <button
             onClick={handleConfirm}
             disabled={confirming}
-            className="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold rounded-lg shadow-xs transition-colors flex items-center gap-1.5"
+            className="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold rounded-lg shadow-2xs transition-colors flex items-center gap-1.5"
           >
             <Save className="w-3.5 h-3.5" /> {confirming ? 'Saving...' : 'Confirm & Archive'}
           </button>
@@ -159,10 +155,10 @@ export default function MonthlyReport({ batchId }) {
 
       {/* Salary & 120 Hours Qualification Card */}
       {salary && (
-        <div className={`p-5 rounded-2xl border transition-all ${
+        <div className={`p-5 rounded-xl bg-white border border-slate-200 border-l-4 shadow-xs transition-all ${
           salary.isEligible 
-            ? 'bg-gradient-to-r from-emerald-50 via-teal-50/60 to-white border-emerald-300 shadow-xs'
-            : 'bg-gradient-to-r from-amber-50 via-orange-50/60 to-white border-amber-300 shadow-xs'
+            ? 'border-l-emerald-600'
+            : 'border-l-amber-600'
         }`}>
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="space-y-1">

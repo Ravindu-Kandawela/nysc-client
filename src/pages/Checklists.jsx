@@ -463,11 +463,11 @@ export default function Checklists({ batchId }) {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <div className="inline-flex rounded-lg border border-slate-200 bg-white p-1">
+          <div className="inline-flex rounded-lg border border-slate-200 bg-slate-200/70 p-1 gap-1">
             <button
               onClick={() => setTab('grid')}
-              className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${
-                tab === 'grid' ? 'bg-brand-600 text-white' : 'text-slate-600 hover:text-slate-900'
+              className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
+                tab === 'grid' ? 'bg-white text-slate-900 shadow-2xs' : 'text-slate-600 hover:text-slate-900'
               }`}
             >
               Task Checklist
@@ -475,17 +475,17 @@ export default function Checklists({ batchId }) {
             {isAdmin && (
               <button
                 onClick={() => setTab('analysis')}
-                className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-colors flex items-center gap-1 ${
-                  tab === 'analysis' ? 'bg-indigo-600 text-white' : 'text-indigo-700 hover:bg-indigo-50'
+                className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all flex items-center gap-1.5 ${
+                  tab === 'analysis' ? 'bg-white text-slate-900 shadow-2xs' : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                <Sparkles className="w-3.5 h-3.5" /> Lesson Plan Analysis & Auto-Fill
+                <Calendar className="w-3.5 h-3.5" /> Schedule Sync &amp; Batch Fill
               </button>
             )}
             <button
               onClick={() => setTab('progress')}
-              className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${
-                tab === 'progress' ? 'bg-brand-600 text-white' : 'text-slate-600 hover:text-slate-900'
+              className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
+                tab === 'progress' ? 'bg-white text-slate-900 shadow-2xs' : 'text-slate-600 hover:text-slate-900'
               }`}
             >
               Overall Progress
@@ -493,23 +493,23 @@ export default function Checklists({ batchId }) {
           </div>
 
           {selectedTaskId && (
-            <div className="inline-flex items-center rounded-lg border border-slate-300 bg-white p-0.5 shadow-xs">
+            <div className="inline-flex items-center rounded-lg border border-slate-300 bg-white p-0.5 shadow-2xs">
               <select
                 value={printPaperSize}
                 onChange={(e) => setPrintPaperSize(e.target.value)}
                 title="Select Checklist Print Format (Legal 1-Page All Names or Classic A4 2-Page Split)"
-                className="px-2.5 py-1 text-xs font-bold text-slate-700 bg-transparent border-r border-slate-200 outline-none cursor-pointer"
+                className="px-2.5 py-1 text-xs font-semibold text-slate-700 bg-transparent border-r border-slate-200 outline-none cursor-pointer"
               >
-                <option value="legal">📄 Legal (1 Page - All Names)</option>
-                <option value="a4">📄 A4 (2 Pages - Classic)</option>
+                <option value="legal">Legal (1 Page - All Names)</option>
+                <option value="a4">A4 (2 Pages - Classic)</option>
               </select>
               <a
                 href={`/api/print/checklist?batchId=${batchId}&taskId=${selectedTaskId}&paperSize=${printPaperSize}&format=html&token=${getToken() || ''}`}
                 target="_blank"
                 rel="noreferrer"
-                className="px-3 py-1 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold rounded-md flex items-center gap-1.5 transition-colors ml-0.5"
+                className="px-3 py-1 hover:bg-slate-50 text-slate-800 text-xs font-semibold rounded-md flex items-center gap-1.5 transition-colors ml-0.5"
               >
-                <Printer className="w-3.5 h-3.5 text-brand-600" /> Print ({printPaperSize.toUpperCase()})
+                <Printer className="w-3.5 h-3.5 text-slate-500" /> Print ({printPaperSize.toUpperCase()})
               </a>
             </div>
           )}
@@ -614,9 +614,9 @@ export default function Checklists({ batchId }) {
               <div className="flex flex-wrap items-center gap-2">
                 <button
                   onClick={() => setShowManageSteps(true)}
-                  className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg border border-slate-300 flex items-center gap-1.5 transition-colors"
+                  className="px-3 py-1.5 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold rounded-lg border border-slate-300 flex items-center gap-1.5 transition-colors shadow-2xs"
                 >
-                  <Edit3 className="w-3.5 h-3.5 text-slate-600" /> Edit Steps / Criteria
+                  <Edit3 className="w-3.5 h-3.5 text-slate-500" /> Edit Criteria
                 </button>
 
                 {isAdmin && (
@@ -624,18 +624,18 @@ export default function Checklists({ batchId }) {
                     onClick={() => handleAutoFillCurrentTask(selectedTaskId)}
                     disabled={autoFillLoading || !checklistData}
                     title="Automatically fill only unmarked students using Lesson Plan date if Present, or their closest Present date if Absent. Keeps existing manual marks untouched!"
-                    className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-lg shadow-xs flex items-center gap-1.5 transition-colors disabled:opacity-50"
+                    className="px-3 py-1.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 text-xs font-semibold rounded-lg shadow-2xs flex items-center gap-1.5 transition-colors disabled:opacity-50"
                   >
-                    <Sparkles className="w-3.5 h-3.5" /> Auto-Fill Missing (Plan + Closest Present)
+                    <Calendar className="w-3.5 h-3.5 text-slate-500" /> Fill Unmarked (Plan Sync)
                   </button>
                 )}
 
                 <button
                   onClick={handleMarkAllPresent}
                   disabled={saving || !checklistData}
-                  className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg shadow-xs flex items-center gap-1.5 transition-colors disabled:opacity-50"
+                  className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded-lg shadow-2xs flex items-center gap-1.5 transition-colors disabled:opacity-50"
                 >
-                  <CheckSquare className="w-3.5 h-3.5" /> {isAdmin ? `Mark Present on ${assessmentDate}` : 'Mark All Present Achieved'}
+                  <CheckSquare className="w-3.5 h-3.5" /> {isAdmin ? `Mark Present (${assessmentDate})` : 'Mark Present Achieved'}
                 </button>
               </div>
             </div>
@@ -696,8 +696,8 @@ export default function Checklists({ batchId }) {
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs border-collapse">
                   <thead>
-                    <tr className="bg-slate-100/70 border-b border-slate-200">
-                      <th className="p-2.5 w-72 min-w-[260px] border-r border-slate-200">
+                    <tr className="bg-slate-100 border-b border-slate-200">
+                      <th className="p-2.5 w-72 min-w-[260px] border-r border-slate-200 sticky left-0 z-20 bg-slate-100">
                         Performance Criteria / Steps
                       </th>
                       {checklistData.students.map(st => {
@@ -765,7 +765,7 @@ export default function Checklists({ batchId }) {
                       })}
                     </tr>
                     <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 text-[10px]">
-                      <th className="p-1 border-r border-slate-200 text-right pr-2">Attempt</th>
+                      <th className="p-1 border-r border-slate-200 text-right pr-2 sticky left-0 z-20 bg-slate-50">Attempt</th>
                       {checklistData.students.map(st => {
                         const isAbsent = checklistData.attendanceMap?.[st.id] === 'A';
                         return (
@@ -779,8 +779,8 @@ export default function Checklists({ batchId }) {
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {checklistData.steps.map(step => (
-                      <tr key={step.id} className="hover:bg-slate-50/50">
-                        <td className="p-2.5 border-r border-slate-200">
+                      <tr key={step.id} className="hover:bg-slate-50/50 group">
+                        <td className="p-2.5 border-r border-slate-200 sticky left-0 z-10 bg-white group-hover:bg-slate-50">
                           <span className="font-bold text-brand-700 mr-1.5">{step.code}</span>
                           <span className="text-slate-700">{step.title}</span>
                         </td>
@@ -826,8 +826,8 @@ export default function Checklists({ batchId }) {
                     ))}
 
                     {/* Competent Row */}
-                    <tr className="bg-slate-50/80 font-bold border-t-2 border-slate-300">
-                      <td className="p-2.5 border-r border-slate-200 text-slate-900">
+                    <tr className="bg-slate-50 font-bold border-t-2 border-slate-300">
+                      <td className="p-2.5 border-r border-slate-200 text-slate-900 sticky left-0 z-10 bg-slate-50">
                         Task Competent
                       </td>
                       {checklistData.students.map(st => {
@@ -854,8 +854,8 @@ export default function Checklists({ batchId }) {
                     </tr>
 
                     {/* Date Achieved Row */}
-                    <tr className="text-[11px] text-slate-500 bg-slate-50/40">
-                      <td className="p-2 border-r border-slate-200 font-semibold">
+                    <tr className="text-[11px] text-slate-500 bg-slate-50">
+                      <td className="p-2 border-r border-slate-200 font-semibold sticky left-0 z-10 bg-slate-50">
                         Date Achieved (Click to Edit)
                       </td>
                       {checklistData.students.map(st => {
@@ -935,22 +935,22 @@ export default function Checklists({ batchId }) {
           )}
 
           {/* Smart Auto-Fill Control Card */}
-          <div className="bg-indigo-50/70 rounded-xl border border-indigo-200 p-4 space-y-4">
+          <div className="bg-white rounded-xl border border-slate-200 p-4 space-y-4 shadow-xs">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <div>
-                <h3 className="font-bold text-indigo-950 text-sm flex items-center gap-1.5">
-                  <Sparkles className="w-4 h-4 text-indigo-600" />
-                  Smart Auto-Fill Checklists from Lesson Plan & Student Attendance
+                <h3 className="font-bold text-slate-900 text-sm flex items-center gap-1.5">
+                  <Calendar className="w-4 h-4 text-slate-600" />
+                  Synchronize Checklists with Lesson Plan &amp; Attendance Register
                 </h3>
-                <p className="text-xs text-indigo-800 mt-0.5">
-                  Automatically ticks missing student checklists on the task&apos;s Lesson Plan date if the student was <strong>Present</strong>, or selects the <strong>closest Present day</strong> if the student was Absent. <strong>Existing manual marks are never changed.</strong>
+                <p className="text-xs text-slate-600 mt-0.5">
+                  Marks unrecorded student checklists on the task&apos;s Lesson Plan date if the student was <strong>Present</strong>, or assigns the <strong>nearest Present date</strong> if the student was Absent. <strong>Existing manual marks are preserved.</strong>
                 </p>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 bg-white p-3.5 rounded-xl border border-indigo-100">
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 bg-slate-50/70 p-3.5 rounded-xl border border-slate-200">
               <div>
-                <label className="block text-[11px] font-bold text-slate-700 mb-1">1. Auto-Fill Scope:</label>
+                <label className="block text-[11px] font-bold text-slate-700 mb-1">1. Sync Scope:</label>
                 <select
                   value={autoFillScope}
                   onChange={(e) => { setAutoFillScope(e.target.value); setAutoFillPreview(null); }}
@@ -1007,9 +1007,9 @@ export default function Checklists({ batchId }) {
                   onChange={(e) => { setAutoFillStrategy(e.target.value); setAutoFillPreview(null); }}
                   className="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-semibold bg-white"
                 >
-                  <option value="manual_or_plan_end">Match My Custom/Manual Task Date + Plan End + Closest Present</option>
-                  <option value="plan_end">Task Completion Date (Plan End) + Closest Present</option>
-                  <option value="plan_start">Task Start Date (Plan Start) + Closest Present</option>
+                  <option value="manual_or_plan_end">Match Custom Task Date + Plan End + Nearest Present</option>
+                  <option value="plan_end">Task Completion Date (Plan End) + Nearest Present</option>
+                  <option value="plan_start">Task Start Date (Plan Start) + Nearest Present</option>
                 </select>
               </div>
 
@@ -1018,40 +1018,40 @@ export default function Checklists({ batchId }) {
                   type="button"
                   onClick={() => handleRunAutoFill(true)}
                   disabled={autoFillLoading}
-                  className="flex-1 py-1.5 px-3 bg-white hover:bg-slate-50 text-indigo-700 border border-indigo-300 font-bold text-xs rounded-lg flex items-center justify-center gap-1 shadow-xs"
+                  className="flex-1 py-1.5 px-3 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 font-bold text-xs rounded-lg flex items-center justify-center gap-1 shadow-xs"
                 >
-                  <Search className="w-3.5 h-3.5" /> Preview
+                  <Search className="w-3.5 h-3.5 text-slate-500" /> Preview
                 </button>
                 <button
                   type="button"
                   onClick={() => handleRunAutoFill(false)}
                   disabled={autoFillLoading}
-                  className="flex-1 py-1.5 px-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-lg flex items-center justify-center gap-1 shadow-xs"
+                  className="flex-1 py-1.5 px-3 bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs rounded-lg flex items-center justify-center gap-1 shadow-xs"
                 >
-                  <Sparkles className="w-3.5 h-3.5" /> Auto-Fill Now
+                  <CheckSquare className="w-3.5 h-3.5" /> Apply Sync
                 </button>
               </div>
             </div>
 
             {/* Preview Results Box */}
             {autoFillPreview && (
-              <div className="bg-white rounded-xl border border-indigo-200 p-4 space-y-3">
+              <div className="bg-white rounded-xl border border-slate-200 p-4 space-y-3">
                 <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-2.5">
                   <div className="font-bold text-xs text-slate-900">
-                    {autoFillPreview.preview ? '🔍 Auto-Fill Preview (No changes saved yet)' : '✅ Auto-Fill Completed'}
+                    {autoFillPreview.preview ? 'Sync Preview (No changes saved yet)' : 'Checklist Sync Completed'}
                   </div>
                   <div className="flex flex-wrap items-center gap-2 text-xs">
                     <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-700 font-bold">
                       {autoFillPreview.tasksProcessed} Tasks
                     </span>
                     <span className="px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 font-bold border border-emerald-200">
-                      ✓ {autoFillPreview.existingPreservedCount} Manual Kept Untouched
+                      ✓ {autoFillPreview.existingPreservedCount} Manual Preserved
                     </span>
-                    <span className="px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 font-bold border border-indigo-200">
-                      📅 {autoFillPreview.planDateMatchesCount} Filled on Lesson Plan Date
+                    <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-700 font-bold border border-slate-200">
+                      {autoFillPreview.planDateMatchesCount} Matched Lesson Plan Date
                     </span>
                     <span className="px-2 py-0.5 rounded bg-amber-50 text-amber-800 font-bold border border-amber-200">
-                      ↪ {autoFillPreview.closestPresentFallbackCount} Absent on Plan Date → Closest Present Date
+                      ↪ {autoFillPreview.closestPresentFallbackCount} Absent → Nearest Present Date
                     </span>
                   </div>
                 </div>
