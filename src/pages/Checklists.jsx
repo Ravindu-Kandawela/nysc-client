@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
-  Check, Printer, Award, UserCheck, ChevronRight, CheckSquare, 
+  Check, Printer, Download, Award, UserCheck, ChevronRight, CheckSquare, 
   Calendar, AlertCircle, AlertTriangle, Plus, Trash2, Edit3, X, 
   RefreshCw, Undo2, ShieldAlert, CheckCircle2, Settings, Sparkles, Search
 } from 'lucide-react';
@@ -40,6 +40,17 @@ export default function Checklists({ batchId }) {
   const [dateEditStudent, setDateEditStudent] = useState(null); // { studentId, studentName, currentDate }
   const [customCompetentDate, setCustomCompetentDate] = useState('');
   const [printPaperSize, setPrintPaperSize] = useState('legal'); // 'legal' (1-page all names) | 'a4' (2-page classic)
+
+  // Batch Download / Print Checklists Modal state
+  const [showBatchDownloadModal, setShowBatchDownloadModal] = useState(false);
+  const [batchDlScope, setBatchDlScope] = useState('all_marked'); // 'all_marked' | 'selected_modules'
+  const [batchDlModuleIds, setBatchDlModuleIds] = useState([]);
+  const [batchDlOnlyMarked, setBatchDlOnlyMarked] = useState(true);
+  const [batchDlNaming, setBatchDlNaming] = useState('task'); // 'task' ("A1 - Title.pdf") | 'module_task' ("M01 - A1 - Title.pdf")
+  const [batchDlTasks, setBatchDlTasks] = useState([]);
+  const [batchDlListLoading, setBatchDlListLoading] = useState(false);
+  const [batchDlProgress, setBatchDlProgress] = useState({ active: false, current: 0, total: 0, currentName: '' });
+  const batchDlAbortRef = useRef(false);
 
   // Load modules
   useEffect(() => {
@@ -439,8 +450,91 @@ export default function Checklists({ batchId }) {
       setSuccessNotice('Task code and title updated successfully!');
       setTimeout(() => setSuccessNotice(null), 3000);
       fetchChecklist();
+      // Refresh module task list so dropdown and batch download reflect the updated saved name
+      if (selectedModuleId) {
+        api.get(`/ncs/modules/${selectedModuleId}/tasks`).then(res => setTasks(res));
+      }
     } catch (err) {
       alert(err.message);
+    }
+  };
+
+  // Load matching tasks when Batch Download Modal opens or filters change
+  useEffect(() => {
+    if (!showBatchDownloadModal || !batchId) return;
+    if (batchDlScope === 'selected_modules' && batchDlModuleIds.length === 0) {
+      setBatchDlTasks([]);
+      return;
+    }
+    setBatchDlListLoading(true);
+    const modParam = batchDlScope === 'selected_modules' ? batchDlModuleIds.join(',') : '';
+    const onlyMarkedParam = batchDlScope === 'all_marked' ? '1' : (batchDlOnlyMarked ? '1' : '0');
+    api
+      .get(`/print/checklists-list?batchId=${batchId}&moduleIds=${modParam}&onlyMarked=${onlyMarkedParam}`)
+      .then(res => {
+        setBatchDlTasks(res.tasks || []);
+      })
+      .catch(err => console.error('Failed to fetch batch download list:', err))
+      .finally(() => setBatchDlListLoading(false));
+  }, [showBatchDownloadModal, batchId, batchDlScope, batchDlModuleIds, batchDlOnlyMarked]);
+
+  const handleToggleBatchModule = (modId) => {
+    const idNum = Number(modId);
+    setBatchDlModuleIds(prev =>
+      prev.includes(idNum) ? prev.filter(id => id !== idNum) : [...prev, idNum]
+    );
+  };
+
+  // 1-Click Sequential Individual PDF Download (each saved with its exact current manually saved task name)
+  const handleRunBatchIndividualDownload = async () => {
+    if (batchDlTasks.length === 0) return;
+    batchDlAbortRef.current = false;
+    const token = getToken() || '';
+    const includeModule = batchDlNaming === 'module_task' ? '1' : '0';
+
+    setBatchDlProgress({
+      active: true,
+      current: 0,
+      total: batchDlTasks.length,
+      currentName: ''
+    });
+
+    for (let i = 0; i < batchDlTasks.length; i++) {
+      if (batchDlAbortRef.current) break;
+      const t = batchDlTasks[i];
+      const fileName = batchDlNaming === 'module_task' ? t.filename_module_task : t.filename_task;
+      setBatchDlProgress({
+        active: true,
+        current: i + 1,
+        total: batchDlTasks.length,
+        currentName: fileName
+      });
+
+      try {
+        const url = `/api/print/checklist?batchId=${batchId}&taskId=${t.id}&paperSize=${printPaperSize}&format=pdf&download=1&includeModule=${includeModule}&token=${token}`;
+        const response = await fetch(url);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const blob = await response.blob();
+        const blobUrl = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = blobUrl;
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        setTimeout(() => window.URL.revokeObjectURL(blobUrl), 3000);
+        // Brief pause so the browser queues downloads cleanly without blocking
+        await new Promise(r => setTimeout(r, 250));
+      } catch (err) {
+        console.error(`Failed to download task ${t.code}:`, err);
+      }
+    }
+
+    const wasAborted = batchDlAbortRef.current;
+    setBatchDlProgress({ active: false, current: 0, total: 0, currentName: '' });
+    if (!wasAborted) {
+      setSuccessNotice(`Downloaded ${batchDlTasks.length} checklist PDF files with their saved task names.`);
+      setTimeout(() => setSuccessNotice(null), 5000);
     }
   };
 
@@ -493,12 +587,12 @@ export default function Checklists({ batchId }) {
           </div>
 
           {selectedTaskId && (
-            <div className="inline-flex items-center rounded-lg border border-slate-300 bg-white p-0.5 shadow-2xs">
+            <div className="inline-flex items-center rounded-lg border border-slate-300 bg-white shadow-2xs divide-x divide-slate-200 overflow-hidden">
               <select
                 value={printPaperSize}
                 onChange={(e) => setPrintPaperSize(e.target.value)}
                 title="Select Checklist Print Format (Legal 1-Page All Names or Classic A4 2-Page Split)"
-                className="px-2.5 py-1 text-xs font-semibold text-slate-700 bg-transparent border-r border-slate-200 outline-none cursor-pointer"
+                className="px-2.5 py-1.5 text-xs font-semibold text-slate-700 bg-transparent outline-none cursor-pointer"
               >
                 <option value="legal">Legal (1 Page - All Names)</option>
                 <option value="a4">A4 (2 Pages - Classic)</option>
@@ -507,10 +601,33 @@ export default function Checklists({ batchId }) {
                 href={`/api/print/checklist?batchId=${batchId}&taskId=${selectedTaskId}&paperSize=${printPaperSize}&format=html&token=${getToken() || ''}`}
                 target="_blank"
                 rel="noreferrer"
-                className="px-3 py-1 hover:bg-slate-50 text-slate-800 text-xs font-semibold rounded-md flex items-center gap-1.5 transition-colors ml-0.5"
+                className="px-2.5 py-1.5 hover:bg-slate-50 text-slate-800 text-xs font-semibold flex items-center gap-1.5 transition-colors"
+                title="Print Current Task Checklist"
               >
                 <Printer className="w-3.5 h-3.5 text-slate-500" /> Print ({printPaperSize.toUpperCase()})
               </a>
+              <a
+                href={`/api/print/checklist?batchId=${batchId}&taskId=${selectedTaskId}&paperSize=${printPaperSize}&format=pdf&download=1&token=${getToken() || ''}`}
+                target="_blank"
+                rel="noreferrer"
+                className="px-2.5 py-1.5 hover:bg-slate-50 text-slate-700 text-xs font-semibold flex items-center gap-1 transition-colors"
+                title="Download Current Task Checklist PDF with Saved Task Name"
+              >
+                <Download className="w-3.5 h-3.5 text-slate-500" /> PDF
+              </a>
+              <button
+                type="button"
+                onClick={() => {
+                  if (selectedModuleId && batchDlModuleIds.length === 0) {
+                    setBatchDlModuleIds([Number(selectedModuleId)]);
+                  }
+                  setShowBatchDownloadModal(true);
+                }}
+                className="px-3 py-1.5 bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold flex items-center gap-1.5 transition-colors"
+                title="1-Click Batch Download All Marked Checklists or Selected Modules"
+              >
+                <Download className="w-3.5 h-3.5" /> Batch Download
+              </button>
             </div>
           )}
         </div>
@@ -1441,6 +1558,297 @@ export default function Checklists({ batchId }) {
               </button>
             </div>
           </form>
+        </div>
+      )}
+
+      {/* MODAL 3: 1-Click Batch Download / Print Checklists */}
+      {showBatchDownloadModal && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden border border-slate-200">
+            {/* Modal Header */}
+            <div className="p-4 bg-slate-900 text-white flex items-center justify-between">
+              <div>
+                <h3 className="font-bold text-sm flex items-center gap-2">
+                  <Download className="w-4 h-4" /> Batch Download &amp; Print Checklists
+                </h3>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Download all marked tasks or selected modules with their current saved task names
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  if (batchDlProgress.active) {
+                    batchDlAbortRef.current = true;
+                  }
+                  setShowBatchDownloadModal(false);
+                }}
+                className="text-slate-400 hover:text-white"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-5 overflow-y-auto space-y-4">
+              {/* 1. Scope Selection */}
+              <div className="space-y-2">
+                <label className="block text-xs font-bold text-slate-800">1. Select Download Scope</label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() => setBatchDlScope('all_marked')}
+                    className={`p-3 rounded-lg border text-left transition-all ${
+                      batchDlScope === 'all_marked'
+                        ? 'border-slate-800 bg-slate-50 ring-1 ring-slate-800'
+                        : 'border-slate-200 hover:bg-slate-50'
+                    }`}
+                  >
+                    <div className="font-bold text-xs text-slate-900">All Marked Tasks (1-Click All)</div>
+                    <div className="text-[11px] text-slate-500 mt-0.5">
+                      Every task across all modules that has student checklist marks recorded
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setBatchDlScope('selected_modules');
+                      if (batchDlModuleIds.length === 0 && selectedModuleId) {
+                        setBatchDlModuleIds([Number(selectedModuleId)]);
+                      }
+                    }}
+                    className={`p-3 rounded-lg border text-left transition-all ${
+                      batchDlScope === 'selected_modules'
+                        ? 'border-slate-800 bg-slate-50 ring-1 ring-slate-800'
+                        : 'border-slate-200 hover:bg-slate-50'
+                    }`}
+                  >
+                    <div className="font-bold text-xs text-slate-900">Selected Module(s)</div>
+                    <div className="text-[11px] text-slate-500 mt-0.5">
+                      Choose one or more specific modules (e.g. M01, M02, M03) to download
+                    </div>
+                  </button>
+                </div>
+              </div>
+
+              {/* Module Checkboxes when 'selected_modules' is active */}
+              {batchDlScope === 'selected_modules' && (
+                <div className="bg-slate-50 p-3.5 rounded-lg border border-slate-200 space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-700">
+                      Select Modules ({batchDlModuleIds.length} selected):
+                    </span>
+                    <div className="flex items-center gap-2 text-xs">
+                      <button
+                        type="button"
+                        onClick={() => setBatchDlModuleIds(modules.map(m => Number(m.module_id)))}
+                        className="font-semibold text-brand-600 hover:underline"
+                      >
+                        Select All
+                      </button>
+                      <span className="text-slate-300">|</span>
+                      <button
+                        type="button"
+                        onClick={() => setBatchDlModuleIds([])}
+                        className="font-semibold text-slate-500 hover:underline"
+                      >
+                        Clear
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 max-h-40 overflow-y-auto pr-1">
+                    {modules.map(m => {
+                      const checked = batchDlModuleIds.includes(Number(m.module_id));
+                      return (
+                        <label
+                          key={m.module_id}
+                          className={`flex items-center gap-2 p-2 rounded border text-xs cursor-pointer transition-colors ${
+                            checked
+                              ? 'bg-white border-slate-400 font-semibold text-slate-900'
+                              : 'bg-white/60 border-slate-200 text-slate-600 hover:bg-white'
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() => handleToggleBatchModule(m.module_id)}
+                            className="rounded border-slate-300"
+                          />
+                          <span className="truncate">
+                            <strong>{m.code}</strong> – {m.title}
+                          </span>
+                        </label>
+                      );
+                    })}
+                  </div>
+
+                  <label className="flex items-center gap-2 pt-1 text-xs font-semibold text-slate-700 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={batchDlOnlyMarked}
+                      onChange={(e) => setBatchDlOnlyMarked(e.target.checked)}
+                      className="rounded border-slate-300"
+                    />
+                    Only include tasks that have student marks recorded
+                  </label>
+                </div>
+              )}
+
+              {/* 2. Paper Format & Saved Filename Format */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-800 mb-1">2. Paper Size Format</label>
+                  <select
+                    value={printPaperSize}
+                    onChange={(e) => setPrintPaperSize(e.target.value)}
+                    className="w-full border border-slate-300 rounded-lg px-2.5 py-2 text-xs font-semibold bg-white"
+                  >
+                    <option value="legal">Legal Landscape (1 Page - All Student Names)</option>
+                    <option value="a4">A4 Landscape (2 Pages - Classic Split)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-800 mb-1">3. Saved PDF File Naming</label>
+                  <select
+                    value={batchDlNaming}
+                    onChange={(e) => setBatchDlNaming(e.target.value)}
+                    className="w-full border border-slate-300 rounded-lg px-2.5 py-2 text-xs font-semibold bg-white"
+                  >
+                    <option value="task">[Task Code] - [Saved Task Title].pdf</option>
+                    <option value="module_task">[Module] - [Task Code] - [Saved Task Title].pdf</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* 3. Matching Tasks & Saved Filenames Preview */}
+              <div className="border border-slate-200 rounded-lg overflow-hidden">
+                <div className="bg-slate-50 px-3 py-2 border-b border-slate-200 flex items-center justify-between text-xs">
+                  <span className="font-bold text-slate-800">
+                    Tasks Ready to Download ({batchDlTasks.length})
+                  </span>
+                  <span className="text-[11px] text-slate-500">
+                    Uses your current manually saved task code &amp; title
+                  </span>
+                </div>
+
+                {batchDlListLoading ? (
+                  <div className="p-6 text-center text-xs text-slate-500">Loading matching tasks...</div>
+                ) : batchDlTasks.length === 0 ? (
+                  <div className="p-6 text-center text-xs text-slate-500">
+                    No matching tasks found for the selected filter.
+                  </div>
+                ) : (
+                  <div className="max-h-48 overflow-y-auto divide-y divide-slate-100 text-xs">
+                    {batchDlTasks.map((t, idx) => (
+                      <div key={t.id} className="px-3 py-2 flex items-center justify-between gap-2 hover:bg-slate-50/70">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="text-slate-400 font-mono text-[11px] w-6">{idx + 1}.</span>
+                          <span className="font-semibold text-slate-800 truncate">
+                            {batchDlNaming === 'module_task' ? t.filename_module_task : t.filename_task}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className="px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-semibold">
+                            {t.marked_students} marked
+                          </span>
+                          <a
+                            href={`/api/print/checklist?batchId=${batchId}&taskId=${t.id}&paperSize=${printPaperSize}&format=pdf&download=1&includeModule=${batchDlNaming === 'module_task' ? '1' : '0'}&token=${getToken() || ''}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="px-2 py-0.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 rounded text-[10px] font-semibold"
+                          >
+                            PDF
+                          </a>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Active Download Progress Bar */}
+              {batchDlProgress.active && (
+                <div className="bg-slate-50 border border-slate-300 rounded-lg p-3 space-y-2">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-bold text-slate-900">
+                      Downloading {batchDlProgress.current} of {batchDlProgress.total}...
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => { batchDlAbortRef.current = true; }}
+                      className="px-2 py-0.5 bg-rose-50 text-rose-700 border border-rose-200 rounded text-[11px] font-semibold"
+                    >
+                      Stop
+                    </button>
+                  </div>
+                  <div className="text-[11px] text-slate-600 truncate font-mono">
+                    {batchDlProgress.currentName}
+                  </div>
+                  <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
+                    <div
+                      className="bg-slate-800 h-full transition-all duration-200"
+                      style={{ width: `${Math.round((batchDlProgress.current / Math.max(1, batchDlProgress.total)) * 100)}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer Actions */}
+            <div className="p-4 bg-slate-50 border-t border-slate-200 flex flex-wrap items-center justify-between gap-2">
+              <div className="flex flex-wrap items-center gap-2">
+                {/* Print All in 1 Combined View */}
+                <a
+                  href={
+                    batchDlTasks.length > 0
+                      ? `/api/print/checklists-batch?batchId=${batchId}&moduleIds=${batchDlScope === 'selected_modules' ? batchDlModuleIds.join(',') : ''}&onlyMarked=${batchDlScope === 'all_marked' || batchDlOnlyMarked ? '1' : '0'}&paperSize=${printPaperSize}&format=html&token=${getToken() || ''}`
+                      : '#'
+                  }
+                  target={batchDlTasks.length > 0 ? '_blank' : undefined}
+                  rel="noreferrer"
+                  onClick={(e) => { if (batchDlTasks.length === 0) e.preventDefault(); }}
+                  className={`px-3 py-2 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 text-xs font-semibold rounded-lg flex items-center gap-1.5 ${
+                    batchDlTasks.length === 0 ? 'opacity-50 pointer-events-none' : ''
+                  }`}
+                >
+                  <Printer className="w-3.5 h-3.5 text-slate-500" /> Print All ({batchDlTasks.length})
+                </a>
+
+                {/* Download Combined Single PDF */}
+                <a
+                  href={
+                    batchDlTasks.length > 0
+                      ? `/api/print/checklists-batch?batchId=${batchId}&moduleIds=${batchDlScope === 'selected_modules' ? batchDlModuleIds.join(',') : ''}&onlyMarked=${batchDlScope === 'all_marked' || batchDlOnlyMarked ? '1' : '0'}&paperSize=${printPaperSize}&format=pdf&download=1&token=${getToken() || ''}`
+                      : '#'
+                  }
+                  target={batchDlTasks.length > 0 ? '_blank' : undefined}
+                  rel="noreferrer"
+                  onClick={(e) => { if (batchDlTasks.length === 0) e.preventDefault(); }}
+                  className={`px-3 py-2 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 text-xs font-semibold rounded-lg flex items-center gap-1.5 ${
+                    batchDlTasks.length === 0 ? 'opacity-50 pointer-events-none' : ''
+                  }`}
+                >
+                  <Download className="w-3.5 h-3.5 text-slate-500" /> Combined PDF (1 File)
+                </a>
+              </div>
+
+              {/* 1-Click Download Individual Named PDFs */}
+              <button
+                type="button"
+                disabled={batchDlTasks.length === 0 || batchDlProgress.active}
+                onClick={handleRunBatchIndividualDownload}
+                className="px-4 py-2 bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white text-xs font-semibold rounded-lg shadow-xs flex items-center gap-1.5"
+              >
+                <Download className="w-3.5 h-3.5" />
+                {batchDlProgress.active
+                  ? `Downloading (${batchDlProgress.current}/${batchDlProgress.total})...`
+                  : `Download ${batchDlTasks.length} Individual PDFs`}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
