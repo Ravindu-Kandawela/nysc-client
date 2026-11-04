@@ -38,6 +38,7 @@ export default function Checklists({ batchId }) {
   // Custom date edit modal state
   const [dateEditStudent, setDateEditStudent] = useState(null); // { studentId, studentName, currentDate }
   const [customCompetentDate, setCustomCompetentDate] = useState('');
+  const [printPaperSize, setPrintPaperSize] = useState('legal'); // 'legal' (1-page all names) | 'a4' (2-page classic)
 
   // Load modules
   useEffect(() => {
@@ -485,14 +486,25 @@ export default function Checklists({ batchId }) {
           </div>
 
           {selectedTaskId && (
-            <a
-              href={`/api/print/checklist?batchId=${batchId}&taskId=${selectedTaskId}&format=html&token=${getToken() || ''}`}
-              target="_blank"
-              rel="noreferrer"
-              className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-lg border border-slate-300 flex items-center gap-1.5 shadow-xs transition-colors"
-            >
-              <Printer className="w-3.5 h-3.5" /> Print Sheet
-            </a>
+            <div className="inline-flex items-center rounded-lg border border-slate-300 bg-white p-0.5 shadow-xs">
+              <select
+                value={printPaperSize}
+                onChange={(e) => setPrintPaperSize(e.target.value)}
+                title="Select Checklist Print Format (Legal 1-Page All Names or Classic A4 2-Page Split)"
+                className="px-2.5 py-1 text-xs font-bold text-slate-700 bg-transparent border-r border-slate-200 outline-none cursor-pointer"
+              >
+                <option value="legal">📄 Legal (1 Page - All Names)</option>
+                <option value="a4">📄 A4 (2 Pages - Classic)</option>
+              </select>
+              <a
+                href={`/api/print/checklist?batchId=${batchId}&taskId=${selectedTaskId}&paperSize=${printPaperSize}&format=html&token=${getToken() || ''}`}
+                target="_blank"
+                rel="noreferrer"
+                className="px-3 py-1 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold rounded-md flex items-center gap-1.5 transition-colors ml-0.5"
+              >
+                <Printer className="w-3.5 h-3.5 text-brand-600" /> Print ({printPaperSize.toUpperCase()})
+              </a>
+            </div>
           )}
         </div>
       </div>
