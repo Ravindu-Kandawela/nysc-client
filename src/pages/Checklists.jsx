@@ -943,7 +943,7 @@ export default function Checklists({ batchId }) {
                   Synchronize Checklists with Lesson Plan &amp; Attendance Register
                 </h3>
                 <p className="text-xs text-slate-600 mt-0.5">
-                  Marks unrecorded student checklists on the task&apos;s Lesson Plan date if the student was <strong>Present</strong>, or assigns the <strong>nearest Present date</strong> if the student was Absent. <strong>Existing manual marks are preserved.</strong>
+                  Marks unrecorded student checklists on the task&apos;s Lesson Plan date if the student was <strong>Present</strong>, or assigns the <strong>next Present date after the planned date</strong> when the student arrived back if they were Absent.
                 </p>
               </div>
             </div>
@@ -1007,9 +1007,9 @@ export default function Checklists({ batchId }) {
                   onChange={(e) => { setAutoFillStrategy(e.target.value); setAutoFillPreview(null); }}
                   className="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-semibold bg-white"
                 >
-                  <option value="manual_or_plan_end">Match Custom Task Date + Plan End + Nearest Present</option>
-                  <option value="plan_end">Task Completion Date (Plan End) + Nearest Present</option>
-                  <option value="plan_start">Task Start Date (Plan Start) + Nearest Present</option>
+                  <option value="manual_or_plan_end">Task Completion Date (Plan End) + Next Present After</option>
+                  <option value="plan_end">Task Completion Date (Plan End) + Next Present After</option>
+                  <option value="plan_start">Task Start Date (Plan Start) + Next Present After</option>
                 </select>
               </div>
 
@@ -1051,7 +1051,7 @@ export default function Checklists({ batchId }) {
                       {autoFillPreview.planDateMatchesCount} Matched Lesson Plan Date
                     </span>
                     <span className="px-2 py-0.5 rounded bg-amber-50 text-amber-800 font-bold border border-amber-200">
-                      ↪ {autoFillPreview.closestPresentFallbackCount} Absent → Nearest Present Date
+                      ↪ {autoFillPreview.closestPresentFallbackCount} Absent → Next Present Date After Plan
                     </span>
                   </div>
                 </div>
@@ -1082,7 +1082,7 @@ export default function Checklists({ batchId }) {
                               <td className="p-2">
                                 {item.absent_on_plan_date ? (
                                   <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800">
-                                    Absent on {item.plan_date} → Closest Present ({item.chosen_date})
+                                    Absent on {item.plan_date} → Next Present After ({item.chosen_date})
                                   </span>
                                 ) : (
                                   <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-50 text-emerald-700">
