@@ -8,7 +8,10 @@ import {
 import { api, getToken } from '../api';
 
 export default function LessonPlan({ batchId }) {
-  const [activeTab, setActiveTab] = useState('modules'); // 'modules' | 'schedule' | 'monthly'
+  const [activeTab, setActiveTab] = useState('modules'); // 'modules' | 'workplan' | 'schedule' | 'monthly'
+  const [workPlanPaper, setWorkPlanPaper] = useState('a4'); // 'a4' | 'legal'
+  const [ganttExpanded, setGanttExpanded] = useState({});
+  const [ganttSubMode, setGanttSubMode] = useState('tasks'); // 'tasks' | 'sessions'
   const [loading, setLoading] = useState(true);
   const [planData, setPlanData] = useState(null);
   const [summaryData, setSummaryData] = useState(null);
@@ -174,7 +177,14 @@ export default function LessonPlan({ batchId }) {
   const totals = planData?.totals || {};
   const modules = planData?.modules || [];
   const days = planData?.days || [];
+  const ganttMonths = planData?.gantt?.months || [];
+  const ganttWeeks = planData?.gantt?.weeks || [];
   const months = summaryData?.summary?.months || [];
+  const todayYmd = new Date().toISOString().slice(0, 10);
+
+  const toggleGanttModule = (id) => {
+    setGanttExpanded(prev => ({ ...prev, [id]: !prev[id] }));
+  };
 
   // Filter modules
   const filteredModules = modules.filter(m => {
@@ -253,6 +263,26 @@ export default function LessonPlan({ batchId }) {
             className="px-3 py-1.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 text-xs font-bold rounded-lg shadow-xs transition-colors flex items-center gap-1.5"
           >
             <Calendar className="w-3.5 h-3.5 text-slate-500" /> Timetable
+          </a>
+
+          {/* Work Plan (Gantt Chart) Print & PDF */}
+          <a
+            href={`/api/print/work-plan?batchId=${batchId}&paperSize=${workPlanPaper}&format=html&token=${token}`}
+            target="_blank"
+            rel="noreferrer"
+            className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-lg shadow-xs transition-colors flex items-center gap-1.5 btn-press"
+            title="Open Official Work Plan (Gantt Chart) Print Preview"
+          >
+            <BarChart3 className="w-3.5 h-3.5" /> Print Work Plan
+          </a>
+          <a
+            href={`/api/print/work-plan?batchId=${batchId}&paperSize=${workPlanPaper}&format=pdf&token=${token}`}
+            target="_blank"
+            rel="noreferrer"
+            className="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-xs font-bold rounded-lg shadow-xs transition-colors flex items-center gap-1.5 btn-press"
+            title="Download Official Work Plan (Gantt Chart) as PDF"
+          >
+            <Download className="w-3.5 h-3.5" /> Work Plan PDF
           </a>
 
           {/* Re-plan disruption */}
@@ -344,6 +374,17 @@ export default function LessonPlan({ batchId }) {
             }`}
           >
             <BookOpen className="w-3.5 h-3.5" /> NVQ-4 Modules &amp; Lesson Content
+          </button>
+
+          <button
+            onClick={() => setActiveTab('workplan')}
+            className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-colors flex items-center gap-2 ${
+              activeTab === 'workplan'
+                ? 'bg-indigo-600 text-white shadow-xs'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+            }`}
+          >
+            <BarChart3 className="w-3.5 h-3.5" /> Work Plan (Gantt Chart)
           </button>
 
           <button
@@ -625,6 +666,375 @@ export default function LessonPlan({ batchId }) {
               No modules match your filter.
             </div>
           )}
+        </div>
+      ) : activeTab === 'workplan' ? (
+        /* ═══════════════════════════════════════════════════════════════
+           TAB 2: SYNCHRONIZED MASTER WORK PLAN (GANTT CHART)
+           ═══════════════════════════════════════════════════════════════ */
+        <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden space-y-0">
+          {/* Gantt Header & Print/PDF Controls */}
+          <div className="p-4 border-b border-slate-200 bg-slate-50/70 flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="font-bold text-slate-900 text-sm">
+                  Master Training Work Plan (Gantt Chart) — පුහුණු ක්‍රියාකාරී සැලැස්ම
+                </h3>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                  100% Synced with Lesson Plan &amp; Timetable
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 mt-0.5">
+                {modules.length} Modules · {ganttWeeks.length} Weeks ({totals.startDate || '-'} to {totals.endDate || '-'}) · Click any module row to expand its Tasks or Lesson Sessions
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              {/* Sub-row drilldown mode */}
+              <div className="inline-flex items-center bg-white border border-slate-200 rounded-lg p-0.5 text-[11px] font-semibold">
+                <button
+                  type="button"
+                  onClick={() => setGanttSubMode('tasks')}
+                  className={`px-2.5 py-1 rounded-md transition-colors ${
+                    ganttSubMode === 'tasks' ? 'bg-slate-900 text-white' : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  Sub-rows: Tasks
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setGanttSubMode('sessions')}
+                  className={`px-2.5 py-1 rounded-md transition-colors ${
+                    ganttSubMode === 'sessions' ? 'bg-slate-900 text-white' : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  Sub-rows: Sessions
+                </button>
+              </div>
+
+              {/* Expand / Collapse all Gantt rows */}
+              <button
+                type="button"
+                onClick={() => {
+                  const all = {};
+                  modules.forEach(m => { all[m.module_id] = true; });
+                  setGanttExpanded(all);
+                }}
+                className="px-2.5 py-1.5 text-[11px] font-bold bg-white border border-slate-200 rounded-lg text-slate-700 hover:bg-slate-50"
+              >
+                Expand All
+              </button>
+              <button
+                type="button"
+                onClick={() => setGanttExpanded({})}
+                className="px-2.5 py-1.5 text-[11px] font-bold bg-white border border-slate-200 rounded-lg text-slate-700 hover:bg-slate-50"
+              >
+                Collapse All
+              </button>
+
+              {/* Paper size selector for Print & PDF */}
+              <div className="inline-flex items-center bg-white border border-slate-300 rounded-lg p-0.5 text-[11px] font-bold">
+                <button
+                  type="button"
+                  onClick={() => setWorkPlanPaper('a4')}
+                  className={`px-2.5 py-1 rounded-md transition-colors ${
+                    workPlanPaper === 'a4' ? 'bg-indigo-600 text-white' : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                  title="A4 Landscape with 20mm Left Gutter"
+                >
+                  📄 A4
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setWorkPlanPaper('legal')}
+                  className={`px-2.5 py-1 rounded-md transition-colors ${
+                    workPlanPaper === 'legal' ? 'bg-indigo-600 text-white' : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                  title="Legal Landscape with 20mm Left Gutter"
+                >
+                  📏 Legal
+                </button>
+              </div>
+
+              <a
+                href={`/api/print/work-plan?batchId=${batchId}&paperSize=${workPlanPaper}&format=html&token=${token}`}
+                target="_blank"
+                rel="noreferrer"
+                className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-lg flex items-center gap-1.5 transition-colors"
+              >
+                <Printer className="w-3.5 h-3.5" /> Print ({workPlanPaper.toUpperCase()})
+              </a>
+
+              <a
+                href={`/api/print/work-plan?batchId=${batchId}&paperSize=${workPlanPaper}&format=pdf&token=${token}`}
+                target="_blank"
+                rel="noreferrer"
+                className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg flex items-center gap-1.5 transition-colors"
+              >
+                <Download className="w-3.5 h-3.5" /> Download PDF ({workPlanPaper.toUpperCase()})
+              </a>
+            </div>
+          </div>
+
+          {/* Interactive Gantt Chart Grid */}
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs border-collapse">
+              <thead>
+                {/* Month Row */}
+                <tr className="bg-slate-900 text-white text-[11px] font-bold">
+                  <th rowSpan={2} className="p-2.5 border border-slate-700 text-center w-10 sticky left-0 z-20 bg-slate-900">#</th>
+                  <th rowSpan={2} className="p-2.5 border border-slate-700 min-w-[230px] sticky left-10 z-20 bg-slate-900">
+                    Module / Unit &amp; Competency Timeline
+                  </th>
+                  <th rowSpan={2} className="p-2 border border-slate-700 text-center w-20">
+                    Hours<br /><span className="text-[9px] font-normal text-slate-300">(T+P=Tot)</span>
+                  </th>
+                  <th rowSpan={2} className="p-2 border border-slate-700 text-center w-16">
+                    Taught
+                  </th>
+                  <th rowSpan={2} className="p-2 border border-slate-700 text-center w-36">
+                    Start – End Date
+                  </th>
+                  <th rowSpan={2} className="p-2 border border-slate-700 text-center w-12">
+                    Days
+                  </th>
+                  {ganttMonths.map((gm) => (
+                    <th
+                      key={gm.monthKey}
+                      colSpan={gm.weeksCount}
+                      className="p-2 border border-slate-700 text-center bg-slate-800 text-indigo-200 tracking-wide"
+                    >
+                      {gm.label} <span className="text-[10px] text-slate-400 font-normal">({gm.plannedHours}h)</span>
+                    </th>
+                  ))}
+                </tr>
+
+                {/* Week Row */}
+                <tr className="bg-slate-100 text-slate-700 text-[10px] font-bold">
+                  {ganttWeeks.map((w) => {
+                    const isCurrentWeek = todayYmd >= w.monday && todayYmd <= w.friday;
+                    return (
+                      <th
+                        key={w.weekNo}
+                        title={`Week ${w.weekNo}: ${w.monday} to ${w.friday} (${w.plannedHours}h planned)`}
+                        className={`p-1.5 border border-slate-300 text-center min-w-[44px] ${
+                          isCurrentWeek ? 'bg-amber-100 text-amber-900 ring-1 ring-amber-400' : ''
+                        }`}
+                      >
+                        <div>W{w.weekInMonth}</div>
+                        <div className="text-[9px] font-normal text-slate-500 whitespace-nowrap">
+                          {w.monday.slice(8, 10)}–{w.friday.slice(8, 10)}
+                        </div>
+                      </th>
+                    );
+                  })}
+                </tr>
+              </thead>
+
+              <tbody className="divide-y divide-slate-200">
+                {filteredModules.map((mod, mIdx) => {
+                  const isExp = !!ganttExpanded[mod.module_id];
+                  const subItems = ganttSubMode === 'tasks' ? (mod.tasks || []) : (mod.sessions || []);
+                  const modPct = mod.plannedHours > 0
+                    ? Math.min(100, Math.round((mod.deliveredHours / mod.plannedHours) * 100))
+                    : 0;
+
+                  return (
+                    <React.Fragment key={mod.module_id}>
+                      {/* Module Gantt Row */}
+                      <tr
+                        onClick={() => toggleGanttModule(mod.module_id)}
+                        className="hover:bg-slate-50/90 cursor-pointer transition-colors group"
+                      >
+                        <td className="p-2 border border-slate-200 text-center font-bold text-slate-600 sticky left-0 z-10 bg-white group-hover:bg-slate-50">
+                          {mIdx + 1}
+                        </td>
+                        <td className="p-2 border border-slate-200 sticky left-10 z-10 bg-white group-hover:bg-slate-50">
+                          <div className="flex items-center gap-2">
+                            <span className="text-slate-400 shrink-0">
+                              {isExp ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+                            </span>
+                            <span className="px-1.5 py-0.5 rounded text-[10px] font-extrabold bg-slate-900 text-white shrink-0">
+                              {mod.code}
+                            </span>
+                            <div className="min-w-0">
+                              <div className="font-bold text-slate-900 truncate max-w-[180px]" title={mod.unit_title || mod.title}>
+                                {mod.unit_title || mod.title}
+                              </div>
+                              <div className="text-[10px] text-slate-500">
+                                {(mod.tasks || []).length} Tasks · {(mod.sessions || []).length} Sessions · {modPct}% Done
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="p-2 border border-slate-200 text-center whitespace-nowrap">
+                          <span className="text-[10px] text-slate-500">{mod.theory_hours}+{mod.practical_hours}=</span>
+                          <strong className="text-slate-900">{mod.total_hours}h</strong>
+                        </td>
+                        <td className="p-2 border border-slate-200 text-center font-bold">
+                          <span className={
+                            mod.deliveredHours >= mod.plannedHours && mod.plannedHours > 0
+                              ? 'text-emerald-700'
+                              : mod.deliveredHours > 0
+                              ? 'text-amber-700'
+                              : 'text-slate-400'
+                          }>
+                            {mod.deliveredHours}h
+                          </span>
+                        </td>
+                        <td className="p-2 border border-slate-200 text-center text-[11px] font-mono text-slate-600 whitespace-nowrap">
+                          {mod.firstDate ? `${mod.firstDate.slice(5)} → ${mod.lastDate?.slice(5)}` : '-'}
+                        </td>
+                        <td className="p-2 border border-slate-200 text-center font-bold text-slate-700">
+                          {mod.days || 0}
+                        </td>
+
+                        {/* Weekly Gantt Cells */}
+                        {ganttWeeks.map((w) => {
+                          const cell = mod.weeklyHours && mod.weeklyHours[w.weekNo];
+                          const isMonthStart = w.weekInMonth === 1;
+                          if (!cell || !cell.planned) {
+                            return (
+                              <td
+                                key={w.weekNo}
+                                className={`p-1 border border-slate-200 ${isMonthStart ? 'border-l-2 border-l-slate-400' : ''}`}
+                              />
+                            );
+                          }
+                          const isDone = cell.delivered >= cell.planned && cell.planned > 0;
+                          const isPartial = !isDone && cell.delivered > 0;
+                          return (
+                            <td
+                              key={w.weekNo}
+                              className={`p-1 border border-slate-200 ${isMonthStart ? 'border-l-2 border-l-slate-400' : ''}`}
+                              title={`${mod.code} (${mod.unit_title || mod.title})\nWeek ${w.weekNo} (${w.monday} to ${w.friday})\nPlanned: ${cell.planned}h | Taught: ${cell.delivered}h`}
+                            >
+                              <div
+                                className={`w-full h-7 rounded flex items-center justify-center text-[10px] font-extrabold shadow-2xs ${
+                                  isDone
+                                    ? 'bg-emerald-600 text-white border border-emerald-700'
+                                    : isPartial
+                                    ? 'bg-amber-500 text-white border border-amber-600'
+                                    : 'bg-indigo-100 text-indigo-800 border border-indigo-300'
+                                }`}
+                              >
+                                {cell.planned}h
+                              </div>
+                            </td>
+                          );
+                        })}
+                      </tr>
+
+                      {/* Expanded Sub-rows (Tasks or Sessions) */}
+                      {isExp && subItems.map((sub, sIdx) => {
+                        const subLabel = ganttSubMode === 'tasks'
+                          ? `${sub.code}: ${sub.title}`
+                          : `Session ${sub.session_no}: ${sub.title}`;
+                        const subHrs = ganttSubMode === 'tasks' ? sub.plannedHours : sub.hours;
+                        return (
+                          <tr key={`${mod.module_id}-sub-${sIdx}`} className="bg-slate-50/70 text-[11px]">
+                            <td className="p-1.5 border border-slate-200 text-center text-[10px] text-slate-400 sticky left-0 z-10 bg-slate-50">
+                              {mIdx + 1}.{sIdx + 1}
+                            </td>
+                            <td className="p-1.5 pl-7 border border-slate-200 sticky left-10 z-10 bg-slate-50">
+                              <div className="font-semibold text-slate-700 truncate max-w-[200px]" title={subLabel}>
+                                ↳ {subLabel}
+                              </div>
+                            </td>
+                            <td className="p-1.5 border border-slate-200 text-center font-semibold text-slate-600">
+                              {subHrs}h
+                            </td>
+                            <td className="p-1.5 border border-slate-200 text-center text-emerald-700 font-semibold">
+                              {sub.deliveredHours || 0}h
+                            </td>
+                            <td className="p-1.5 border border-slate-200 text-center text-[10px] font-mono text-slate-500 whitespace-nowrap">
+                              {sub.firstDate ? `${sub.firstDate.slice(5)} → ${sub.lastDate?.slice(5)}` : '-'}
+                            </td>
+                            <td className="p-1.5 border border-slate-200 text-center text-slate-500">
+                              {sub.days || 0}
+                            </td>
+                            {ganttWeeks.map((w) => {
+                              const sc = sub.weeklyHours && sub.weeklyHours[w.weekNo];
+                              const isMonthStart = w.weekInMonth === 1;
+                              if (!sc || !sc.planned) {
+                                return (
+                                  <td
+                                    key={w.weekNo}
+                                    className={`p-0.5 border border-slate-200 ${isMonthStart ? 'border-l-2 border-l-slate-300' : ''}`}
+                                  />
+                                );
+                              }
+                              const isSubDone = sc.delivered >= sc.planned && sc.planned > 0;
+                              return (
+                                <td
+                                  key={w.weekNo}
+                                  className={`p-0.5 border border-slate-200 ${isMonthStart ? 'border-l-2 border-l-slate-300' : ''}`}
+                                  title={`${subLabel} · Week ${w.weekNo}: ${sc.delivered}/${sc.planned}h`}
+                                >
+                                  <div
+                                    className={`w-full h-5 rounded-sm flex items-center justify-center text-[9px] font-bold ${
+                                      isSubDone
+                                        ? 'bg-emerald-500/90 text-white'
+                                        : sc.delivered > 0
+                                        ? 'bg-amber-400 text-slate-900'
+                                        : 'bg-sky-200 text-sky-900'
+                                    }`}
+                                  >
+                                    {sc.planned}h
+                                  </div>
+                                </td>
+                              );
+                            })}
+                          </tr>
+                        );
+                      })}
+                    </React.Fragment>
+                  );
+                })}
+
+                {/* Bottom Weekly Total Row */}
+                <tr className="bg-slate-100 font-extrabold text-slate-800 text-[11px]">
+                  <td colSpan={2} className="p-2.5 border border-slate-300 text-right sticky left-0 z-10 bg-slate-100">
+                    TOTAL WEEKLY &amp; COURSE HOURS:
+                  </td>
+                  <td className="p-2 border border-slate-300 text-center text-brand-700">
+                    {totals.curriculumHours || 720}h
+                  </td>
+                  <td className="p-2 border border-slate-300 text-center text-emerald-700">
+                    {totals.delivered || 0}h
+                  </td>
+                  <td className="p-2 border border-slate-300 text-center text-[10px] font-mono">
+                    {totals.startDate || '-'} → {totals.endDate || '-'}
+                  </td>
+                  <td className="p-2 border border-slate-300 text-center">
+                    {totals.teachingDays || 0}
+                  </td>
+                  {ganttWeeks.map((w) => (
+                    <td key={w.weekNo} className="p-1.5 border border-slate-300 text-center text-[10px]">
+                      {w.plannedHours || '-'}
+                    </td>
+                  ))}
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          {/* Gantt Legend Footer */}
+          <div className="p-3 bg-slate-50 border-t border-slate-200 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-600">
+            <div className="flex flex-wrap items-center gap-4 font-semibold">
+              <span className="flex items-center gap-1.5">
+                <span className="w-3.5 h-3.5 rounded bg-emerald-600 inline-block" /> Completed / Taught Week
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="w-3.5 h-3.5 rounded bg-amber-500 inline-block" /> In Progress (Partial)
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="w-3.5 h-3.5 rounded bg-indigo-100 border border-indigo-300 inline-block" /> Planned Schedule (Synced with Timetable)
+              </span>
+            </div>
+            <div className="text-[11px] text-slate-500">
+              Both A4 &amp; Legal printouts include a <strong>20mm left binding/punch gutter</strong> for official NYSC file binders.
+            </div>
+          </div>
         </div>
       ) : activeTab === 'schedule' ? (
         /* ═══════════════════════════════════════════════════════════════
