@@ -140,6 +140,15 @@ export default function MonthlyReport({ batchId }) {
             >
               <Download className="w-3.5 h-3.5 text-slate-500" /> PDF
             </a>
+            <a
+              href={`/api/print/timetables-batch?batchId=${batchId}&format=pdf&download=1&token=${token}`}
+              target="_blank"
+              rel="noreferrer"
+              className="px-3 py-1.5 bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold transition-colors flex items-center gap-1.5"
+              title="1-Click Batch Download All 6 Months Timetables PDF"
+            >
+              <Download className="w-3.5 h-3.5 text-emerald-400" /> All Months Timetables
+            </a>
           </div>
 
           {/* Save / Confirm Snapshot */}

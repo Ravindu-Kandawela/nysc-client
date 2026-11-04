@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { 
   Check, Clock, AlertCircle, Calendar, Save, CheckCheck, Printer, 
   BarChart3, ChevronLeft, ChevronRight, Download, Search, Users, 
-  TrendingUp, X, MessageCircle, Send, Phone, Copy, Bell, Edit2, ExternalLink, Smartphone, Shield 
+  TrendingUp, X, MessageCircle, Send, Phone, Copy, Bell, Edit2, ExternalLink, Smartphone, Shield,
+  FolderDown, Layers, FileText, Loader2
 } from 'lucide-react';
 import { api } from '../api';
 import html2canvas from 'html2canvas';
@@ -56,6 +57,126 @@ export default function Attendance({ batchId }) {
   const [copiedOicMsgToast, setCopiedOicMsgToast] = useState(false);
   const [smsTab, setSmsTab] = useState('parents'); // 'parents' | 'oic'
   const [oicSummaryData, setOicSummaryData] = useState(null);
+
+  // ── Batch Monthly Attendance Download & Print States ──
+  const [batchModalOpen, setBatchModalOpen] = useState(false);
+  const [batchMonthsLoading, setBatchMonthsLoading] = useState(false);
+  const [batchMonthsList, setBatchMonthsList] = useState([]);
+  const [batchMode, setBatchMode] = useState('marked'); // 'marked' | 'all' | 'selected'
+  const [selectedBatchMonths, setSelectedBatchMonths] = useState(new Set());
+  const [batchPaperSize, setBatchPaperSize] = useState('a4'); // 'a4' | 'legal'
+  const [batchDownloading, setBatchDownloading] = useState(false);
+  const [batchProgress, setBatchProgress] = useState({ current: 0, total: 0, currentName: '' });
+  const cancelBatchRef = useRef(false);
+
+  const openBatchAttendanceModal = async () => {
+    if (!batchId) return;
+    setBatchModalOpen(true);
+    setBatchMonthsLoading(true);
+    try {
+      const data = await api.get(`/print/attendance-months?batchId=${batchId}`);
+      const mList = data.months || [];
+      setBatchMonthsList(mList);
+      const markedSet = new Set(mList.filter(m => m.is_marked).map(m => m.month));
+      setSelectedBatchMonths(markedSet.size > 0 ? markedSet : new Set(mList.map(m => m.month)));
+    } catch (e) {
+      console.error('Failed to load attendance months:', e);
+    } finally {
+      setBatchMonthsLoading(false);
+    }
+  };
+
+  const toggleBatchMonth = (ym) => {
+    setSelectedBatchMonths(prev => {
+      const next = new Set(prev);
+      if (next.has(ym)) next.delete(ym);
+      else next.add(ym);
+      return next;
+    });
+  };
+
+  const getFilteredBatchMonths = () => {
+    if (batchMode === 'marked') {
+      return batchMonthsList.filter(m => m.is_marked);
+    }
+    if (batchMode === 'selected') {
+      return batchMonthsList.filter(m => selectedBatchMonths.has(m.month));
+    }
+    return batchMonthsList;
+  };
+
+  const triggerSingleMonthPdfDownload = async (mObj) => {
+    const token = localStorage.getItem('token');
+    const url = `/api/print/attendance?batchId=${batchId}&month=${mObj.month}&paperSize=${batchPaperSize}&format=pdf&download=1${token ? `&token=${encodeURIComponent(token)}` : ''}`;
+    const filename = mObj.filename || `Attendance Register - ${mObj.month} ${mObj.label}.pdf`;
+    const response = await fetch(url, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {}
+    });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const blob = await response.blob();
+    const blobUrl = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = blobUrl;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => window.URL.revokeObjectURL(blobUrl), 4000);
+  };
+
+  const handleBatchDownloadIndividualMonths = async () => {
+    const monthsToDownload = getFilteredBatchMonths();
+    if (monthsToDownload.length === 0) return;
+
+    cancelBatchRef.current = false;
+    setBatchDownloading(true);
+    setBatchProgress({ current: 0, total: monthsToDownload.length, currentName: '' });
+
+    try {
+      for (let i = 0; i < monthsToDownload.length; i++) {
+        if (cancelBatchRef.current) break;
+        const m = monthsToDownload[i];
+        const cleanFilename = m.filename || `Attendance Register - ${m.month} ${m.label}.pdf`;
+        setBatchProgress({ current: i + 1, total: monthsToDownload.length, currentName: cleanFilename });
+        await triggerSingleMonthPdfDownload(m);
+        if (i < monthsToDownload.length - 1 && !cancelBatchRef.current) {
+          await new Promise(r => setTimeout(r, 450));
+        }
+      }
+    } catch (e) {
+      alert('Batch attendance download encountered an error: ' + (e.message || 'Failed'));
+    } finally {
+      setBatchDownloading(false);
+    }
+  };
+
+  const handleBatchCombinedAttendance = (format = 'html', download = false) => {
+    const monthsToInclude = getFilteredBatchMonths();
+    if (monthsToInclude.length === 0) return;
+    const token = localStorage.getItem('token');
+    const params = new URLSearchParams({
+      batchId: String(batchId),
+      months: monthsToInclude.map(m => m.month).join(','),
+      paperSize: batchPaperSize,
+      format
+    });
+    if (download) params.set('download', '1');
+    if (token) params.set('token', token);
+    window.open(`/api/print/attendance-batch?${params.toString()}`, '_blank');
+  };
+
+  const handleOfficialServerPrintMonth = (paperSize = 'a4', format = 'html', download = false) => {
+    const token = localStorage.getItem('token');
+    const params = new URLSearchParams({
+      batchId: String(batchId),
+      month: selectedMonth,
+      paperSize,
+      format
+    });
+    if (download) params.set('download', '1');
+    if (token) params.set('token', token);
+    window.open(`/api/print/attendance?${params.toString()}`, '_blank');
+  };
 
   const fetchAlertData = async () => {
     if (!batchId) return;
@@ -451,7 +572,17 @@ export default function Attendance({ batchId }) {
           <p className="text-xs text-slate-500 mt-0.5">Daily marking & monthly attendance sheet</p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={openBatchAttendanceModal}
+            className="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold rounded-lg shadow-xs transition-colors flex items-center gap-1.5"
+            title="Batch download all monthly attendance registers (1-click all marked months or selected months)"
+          >
+            <FolderDown className="w-3.5 h-3.5 text-emerald-400" />
+            Batch Download Months
+          </button>
+
           <div className="inline-flex rounded-lg border border-slate-200 bg-white p-1">
             <button
               onClick={() => setTab('daily')}
@@ -894,6 +1025,24 @@ export default function Attendance({ batchId }) {
                   E
                 </span>
               </div>
+
+              <button
+                type="button"
+                onClick={openBatchAttendanceModal}
+                className="px-3 py-1.5 bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold rounded-lg shadow-xs transition-colors flex items-center gap-1.5"
+                title="1-click batch download or print all months' attendance registers"
+              >
+                <FolderDown className="w-3.5 h-3.5 text-emerald-400" /> Batch Months
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleOfficialServerPrintMonth('a4', 'html', false)}
+                className="px-3 py-1.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 text-xs font-semibold rounded-lg shadow-xs transition-colors flex items-center gap-1.5"
+                title="Open official NYSC A4/Legal print preview with 20mm binding gutter"
+              >
+                <FileText className="w-3.5 h-3.5 text-brand-700" /> Official Form
+              </button>
 
               <button
                 onClick={handleDownloadPDF}
@@ -1857,6 +2006,337 @@ export default function Attendance({ batchId }) {
               >
                 Close
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ════════════════════════════════════════════════════════════════
+         BATCH DOWNLOAD & PRINT MONTHLY ATTENDANCE REGISTERS MODAL
+         ════════════════════════════════════════════════════════════════ */}
+      {batchModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-[1px] z-50 flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-white rounded-xl shadow-xl border border-slate-200 w-full max-w-2xl overflow-hidden flex flex-col max-h-[88vh]">
+            {/* Header */}
+            <div className="px-5 py-4 bg-slate-800 text-white flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-lg bg-slate-700">
+                  <FolderDown className="w-5 h-5 text-emerald-400" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold">Batch Download &amp; Print Monthly Attendance Registers</h3>
+                  <p className="text-[11px] text-slate-300 mt-0.5">
+                    Download every month as separate PDFs or 1 combined multi-month register (20mm left binding gutter)
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  if (batchDownloading) {
+                    cancelBatchRef.current = true;
+                  }
+                  setBatchModalOpen(false);
+                }}
+                className="p-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-slate-700 transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="p-5 overflow-y-auto space-y-4 flex-1">
+              {batchMonthsLoading ? (
+                <div className="py-10 flex flex-col items-center justify-center gap-2 text-slate-500">
+                  <Loader2 className="w-6 h-6 animate-spin text-brand-600" />
+                  <span className="text-xs font-medium">Loading batch attendance months...</span>
+                </div>
+              ) : (
+                <>
+                  {/* Step 1: Scope & Paper Size */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+                        1. Select Months to Include
+                      </label>
+                      <div className="space-y-1.5">
+                        <button
+                          type="button"
+                          onClick={() => setBatchMode('marked')}
+                          className={`w-full p-2.5 rounded-lg border text-left transition-all flex items-center justify-between ${
+                            batchMode === 'marked'
+                              ? 'border-brand-600 bg-brand-50/70 ring-1 ring-brand-600'
+                              : 'border-slate-200 hover:bg-slate-50'
+                          }`}
+                        >
+                          <div>
+                            <div className="text-xs font-bold text-slate-800">All Marked Months (1-Click All)</div>
+                            <div className="text-[11px] text-slate-500">Every month with recorded attendance</div>
+                          </div>
+                          <span className="text-xs font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800">
+                            {batchMonthsList.filter(m => m.is_marked).length} Months
+                          </span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setBatchMode('all')}
+                          className={`w-full p-2.5 rounded-lg border text-left transition-all flex items-center justify-between ${
+                            batchMode === 'all'
+                              ? 'border-brand-600 bg-brand-50/70 ring-1 ring-brand-600'
+                              : 'border-slate-200 hover:bg-slate-50'
+                          }`}
+                        >
+                          <div>
+                            <div className="text-xs font-bold text-slate-800">All Course Months (Full Intake)</div>
+                            <div className="text-[11px] text-slate-500">All 6 months of the batch schedule</div>
+                          </div>
+                          <span className="text-xs font-bold px-2 py-0.5 rounded bg-slate-200 text-slate-800">
+                            {batchMonthsList.length} Months
+                          </span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setBatchMode('selected')}
+                          className={`w-full p-2.5 rounded-lg border text-left transition-all flex items-center justify-between ${
+                            batchMode === 'selected'
+                              ? 'border-brand-600 bg-brand-50/70 ring-1 ring-brand-600'
+                              : 'border-slate-200 hover:bg-slate-50'
+                          }`}
+                        >
+                          <div>
+                            <div className="text-xs font-bold text-slate-800">Selected Month(s)</div>
+                            <div className="text-[11px] text-slate-500">Pick specific months below</div>
+                          </div>
+                          <span className="text-xs font-bold px-2 py-0.5 rounded bg-brand-100 text-brand-800">
+                            {selectedBatchMonths.size} Selected
+                          </span>
+                        </button>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+                        2. Paper Size &amp; Punch Gutter
+                      </label>
+                      <div className="space-y-2">
+                        <button
+                          type="button"
+                          onClick={() => setBatchPaperSize('a4')}
+                          className={`w-full p-3 rounded-lg border text-left transition-all ${
+                            batchPaperSize === 'a4'
+                              ? 'border-brand-600 bg-brand-50/70 ring-1 ring-brand-600'
+                              : 'border-slate-200 hover:bg-slate-50'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-bold text-slate-800">A4 Landscape</span>
+                            <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-slate-100 text-slate-700">297 × 210 mm</span>
+                          </div>
+                          <p className="text-[11px] text-slate-500 mt-1">
+                            Standard A4 landscape register with 20mm left binding/punch gutter.
+                          </p>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setBatchPaperSize('legal')}
+                          className={`w-full p-3 rounded-lg border text-left transition-all ${
+                            batchPaperSize === 'legal'
+                              ? 'border-brand-600 bg-brand-50/70 ring-1 ring-brand-600'
+                              : 'border-slate-200 hover:bg-slate-50'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-bold text-slate-800">Legal Landscape (Wide)</span>
+                            <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-slate-100 text-slate-700">355.6 × 215.9 mm</span>
+                          </div>
+                          <p className="text-[11px] text-slate-500 mt-1">
+                            Wide Legal register with larger 31-day columns and 20mm left punch gutter.
+                          </p>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Month selection checkboxes if 'selected' mode */}
+                  {batchMode === 'selected' && (
+                    <div className="border border-slate-200 rounded-lg p-3 bg-slate-50/60 space-y-2">
+                      <div className="flex items-center justify-between pb-1.5 border-b border-slate-200">
+                        <span className="text-xs font-bold text-slate-700">Choose Months ({selectedBatchMonths.size} selected)</span>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setSelectedBatchMonths(new Set(batchMonthsList.filter(m => m.is_marked).map(m => m.month)))}
+                            className="text-[11px] font-semibold text-emerald-700 hover:underline"
+                          >
+                            Marked Only
+                          </button>
+                          <span className="text-slate-300">·</span>
+                          <button
+                            type="button"
+                            onClick={() => setSelectedBatchMonths(new Set(batchMonthsList.map(m => m.month)))}
+                            className="text-[11px] font-semibold text-brand-700 hover:underline"
+                          >
+                            Select All
+                          </button>
+                          <span className="text-slate-300">·</span>
+                          <button
+                            type="button"
+                            onClick={() => setSelectedBatchMonths(new Set())}
+                            className="text-[11px] font-semibold text-slate-500 hover:underline"
+                          >
+                            Clear
+                          </button>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                        {batchMonthsList.map(m => {
+                          const checked = selectedBatchMonths.has(m.month);
+                          return (
+                            <label
+                              key={m.month}
+                              className={`flex items-center justify-between p-2 rounded-md border cursor-pointer text-xs transition-colors ${
+                                checked ? 'bg-white border-brand-500 text-slate-900 font-semibold' : 'bg-white/60 border-slate-200 text-slate-600'
+                              }`}
+                            >
+                              <div className="flex items-center gap-2">
+                                <input
+                                  type="checkbox"
+                                  checked={checked}
+                                  onChange={() => toggleBatchMonth(m.month)}
+                                  className="rounded border-slate-300 text-brand-600 focus:ring-brand-500"
+                                />
+                                <span>{m.label}</span>
+                              </div>
+                              <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${
+                                m.is_marked ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'
+                              }`}>
+                                {m.marked_days}d
+                              </span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Preview of monthly files */}
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                        3. Monthly Register Files ({getFilteredBatchMonths().length} Months)
+                      </label>
+                      <span className="text-[11px] text-slate-500">
+                        Named cleanly by Year-Month &amp; Month Name
+                      </span>
+                    </div>
+                    <div className="border border-slate-200 rounded-lg divide-y divide-slate-100 max-h-48 overflow-y-auto bg-white">
+                      {getFilteredBatchMonths().length === 0 ? (
+                        <div className="p-6 text-center text-xs text-slate-400">
+                          No months match the current selection.
+                        </div>
+                      ) : (
+                        getFilteredBatchMonths().map((m, idx) => (
+                          <div key={m.month} className="px-3 py-2 flex items-center justify-between gap-2 text-xs hover:bg-slate-50">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span className="text-[10px] font-mono text-slate-400 w-5">{idx + 1}.</span>
+                              <FileText className="w-3.5 h-3.5 text-brand-700 shrink-0" />
+                              <span className="font-semibold text-slate-800 truncate">{m.filename}</span>
+                            </div>
+                            <div className="flex items-center gap-2 shrink-0">
+                              <span className={`text-[10px] px-1.5 py-0.5 rounded font-semibold ${
+                                m.is_marked ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-500'
+                              }`}>
+                                {m.is_marked ? `${m.marked_days} Days · ${m.attendance_rate}%` : 'Blank Sheet'}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => triggerSingleMonthPdfDownload(m)}
+                                className="px-2 py-0.5 text-[11px] font-semibold rounded bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors"
+                                title="Download this month's PDF individually"
+                              >
+                                PDF
+                              </button>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Progress bar when downloading individual files */}
+                  {batchDownloading && (
+                    <div className="p-3 rounded-lg bg-brand-50 border border-brand-200 space-y-2">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="font-bold text-brand-900 flex items-center gap-1.5">
+                          <Loader2 className="w-3.5 h-3.5 animate-spin text-brand-700" />
+                          Downloading {batchProgress.current} of {batchProgress.total}...
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => { cancelBatchRef.current = true; }}
+                          className="text-[11px] font-bold text-rose-700 hover:underline"
+                        >
+                          Stop
+                        </button>
+                      </div>
+                      <div className="text-[11px] text-brand-800 truncate font-mono">
+                        {batchProgress.currentName}
+                      </div>
+                      <div className="w-full h-1.5 bg-brand-100 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-brand-600 transition-all duration-300"
+                          style={{ width: `${batchProgress.total ? Math.round((batchProgress.current / batchProgress.total) * 100) : 0}%` }}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+
+            {/* Footer Actions */}
+            <div className="px-5 py-3.5 bg-slate-50 border-t border-slate-200 flex flex-wrap items-center justify-between gap-2">
+              <button
+                type="button"
+                onClick={() => handleBatchCombinedAttendance('html', false)}
+                disabled={batchDownloading || getFilteredBatchMonths().length === 0}
+                className="px-3 py-2 rounded-lg border border-slate-300 bg-white hover:bg-slate-100 text-slate-700 text-xs font-semibold flex items-center gap-1.5 disabled:opacity-50 transition-colors"
+                title="Open all selected months in one print-ready view"
+              >
+                <Printer className="w-3.5 h-3.5" />
+                Print All Months
+              </button>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleBatchCombinedAttendance('pdf', true)}
+                  disabled={batchDownloading || getFilteredBatchMonths().length === 0}
+                  className="px-3.5 py-2 rounded-lg border border-brand-300 bg-brand-50 hover:bg-brand-100 text-brand-800 text-xs font-semibold flex items-center gap-1.5 disabled:opacity-50 transition-colors"
+                  title="Download a single combined PDF containing all selected monthly registers"
+                >
+                  <Layers className="w-3.5 h-3.5" />
+                  Combined PDF (1 File)
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleBatchDownloadIndividualMonths}
+                  disabled={batchDownloading || getFilteredBatchMonths().length === 0}
+                  className="px-4 py-2 rounded-lg bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold flex items-center gap-1.5 shadow-xs disabled:opacity-50 transition-colors"
+                  title="Download each month as its own separate PDF file"
+                >
+                  {batchDownloading ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Download className="w-3.5 h-3.5" />
+                  )}
+                  1-Click Download {getFilteredBatchMonths().length} Monthly PDFs
+                </button>
+              </div>
             </div>
           </div>
         </div>

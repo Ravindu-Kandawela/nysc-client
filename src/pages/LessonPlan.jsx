@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   BookOpen, Calendar, Clock, CheckCircle2, AlertTriangle, 
   RotateCw, Filter, ChevronDown, ChevronRight, RefreshCw, 
   Printer, Download, Search, Edit3, X, Save, Layers, 
-  Award, CheckCircle, FileText, BarChart3, ExternalLink
+  Award, CheckCircle, FileText, BarChart3, ExternalLink,
+  FolderDown, Loader2
 } from 'lucide-react';
 import { api, getToken } from '../api';
 
@@ -40,6 +41,115 @@ export default function LessonPlan({ batchId }) {
   });
   const [replanPreview, setReplanPreview] = useState(null);
   const [generating, setGenerating] = useState(false);
+
+  // ── Batch Monthly Timetables Download & Print States ──
+  const [batchTimetableModalOpen, setBatchTimetableModalOpen] = useState(false);
+  const [batchTtLoading, setBatchTtLoading] = useState(false);
+  const [batchTtMonths, setBatchTtMonths] = useState([]);
+  const [batchTtMode, setBatchTtMode] = useState('all'); // 'all' | 'taught' | 'selected'
+  const [selectedTtMonths, setSelectedTtMonths] = useState(new Set());
+  const [batchTtLayout, setBatchTtLayout] = useState('grid'); // 'grid' | 'list'
+  const [batchTtDownloading, setBatchTtDownloading] = useState(false);
+  const [batchTtProgress, setBatchTtProgress] = useState({ current: 0, total: 0, currentName: '' });
+  const cancelTtBatchRef = useRef(false);
+
+  const openBatchTimetablesModal = async () => {
+    if (!batchId) return;
+    setBatchTimetableModalOpen(true);
+    setBatchTtLoading(true);
+    try {
+      const data = await api.get(`/print/timetables-months?batchId=${batchId}`);
+      const mList = data.months || [];
+      setBatchTtMonths(mList);
+      setSelectedTtMonths(new Set(mList.map(m => m.month)));
+    } catch (e) {
+      console.error('Failed to load timetable months:', e);
+    } finally {
+      setBatchTtLoading(false);
+    }
+  };
+
+  const toggleTtMonth = (ym) => {
+    setSelectedTtMonths(prev => {
+      const next = new Set(prev);
+      if (next.has(ym)) next.delete(ym);
+      else next.add(ym);
+      return next;
+    });
+  };
+
+  const getFilteredTtMonths = () => {
+    if (batchTtMode === 'taught') {
+      return batchTtMonths.filter(m => m.is_taught);
+    }
+    if (batchTtMode === 'selected') {
+      return batchTtMonths.filter(m => selectedTtMonths.has(m.month));
+    }
+    return batchTtMonths;
+  };
+
+  const triggerSingleTimetablePdfDownload = async (mObj) => {
+    const tok = getToken() || '';
+    const url = `/api/print/timetable?batchId=${batchId}&month=${mObj.month}&from=${mObj.from}&to=${mObj.to}&layout=${batchTtLayout}&format=pdf&download=1${tok ? `&token=${encodeURIComponent(tok)}` : ''}`;
+    const filename = batchTtLayout === 'list'
+      ? `Timetable List - ${mObj.month} ${mObj.label}.pdf`
+      : (mObj.filename || `Timetable - ${mObj.month} ${mObj.label}.pdf`);
+    const response = await fetch(url, {
+      headers: tok ? { Authorization: `Bearer ${tok}` } : {}
+    });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const blob = await response.blob();
+    const blobUrl = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = blobUrl;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => window.URL.revokeObjectURL(blobUrl), 4000);
+  };
+
+  const handleBatchDownloadIndividualTimetables = async () => {
+    const monthsToDownload = getFilteredTtMonths();
+    if (monthsToDownload.length === 0) return;
+
+    cancelTtBatchRef.current = false;
+    setBatchTtDownloading(true);
+    setBatchTtProgress({ current: 0, total: monthsToDownload.length, currentName: '' });
+
+    try {
+      for (let i = 0; i < monthsToDownload.length; i++) {
+        if (cancelTtBatchRef.current) break;
+        const m = monthsToDownload[i];
+        const cleanFilename = batchTtLayout === 'list'
+          ? `Timetable List - ${m.month} ${m.label}.pdf`
+          : (m.filename || `Timetable - ${m.month} ${m.label}.pdf`);
+        setBatchTtProgress({ current: i + 1, total: monthsToDownload.length, currentName: cleanFilename });
+        await triggerSingleTimetablePdfDownload(m);
+        if (i < monthsToDownload.length - 1 && !cancelTtBatchRef.current) {
+          await new Promise(r => setTimeout(r, 450));
+        }
+      }
+    } catch (e) {
+      alert('Batch timetable download encountered an error: ' + (e.message || 'Failed'));
+    } finally {
+      setBatchTtDownloading(false);
+    }
+  };
+
+  const handleBatchCombinedTimetables = (format = 'html', download = false) => {
+    const monthsToInclude = getFilteredTtMonths();
+    if (monthsToInclude.length === 0) return;
+    const tok = getToken() || '';
+    const params = new URLSearchParams({
+      batchId: String(batchId),
+      months: monthsToInclude.map(m => m.month).join(','),
+      format
+    });
+    if (download) params.set('download', '1');
+    if (tok) params.set('token', tok);
+    window.open(`/api/print/timetables-batch?${params.toString()}`, '_blank');
+  };
 
   const fetchLessonPlan = async () => {
     if (!batchId) return;
@@ -282,6 +392,14 @@ export default function LessonPlan({ batchId }) {
             >
               <Calendar className="w-3.5 h-3.5 text-slate-500" /> Timetable
             </a>
+            <button
+              type="button"
+              onClick={openBatchTimetablesModal}
+              className="px-3 py-1.5 bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold transition-colors flex items-center gap-1.5"
+              title="1-Click Batch Download or Print all monthly timetables"
+            >
+              <FolderDown className="w-3.5 h-3.5 text-emerald-400" /> Batch Timetables
+            </button>
           </div>
 
           {/* Schedule Adjustment Actions */}
@@ -1133,8 +1251,18 @@ export default function LessonPlan({ batchId }) {
               <h3 className="font-bold text-slate-900 text-sm">Monthly Hours Breakdown</h3>
               <p className="text-xs text-slate-500">120 Hours Target per Month Evaluation</p>
             </div>
-            <div className="text-xs font-bold text-slate-700">
-              Total: {totals.planned || 720}h · End: {totals.endDate || '-'}
+            <div className="flex items-center gap-3">
+              <div className="text-xs font-bold text-slate-700">
+                Total: {totals.planned || 720}h · End: {totals.endDate || '-'}
+              </div>
+              <button
+                type="button"
+                onClick={openBatchTimetablesModal}
+                className="px-3 py-1.5 bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold rounded-lg shadow-xs transition-colors flex items-center gap-1.5"
+              >
+                <FolderDown className="w-3.5 h-3.5 text-emerald-400" />
+                Batch Download All Months
+              </button>
             </div>
           </div>
 
@@ -1476,6 +1604,338 @@ export default function LessonPlan({ batchId }) {
               >
                 Confirm &amp; Apply New Plan
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ════════════════════════════════════════════════════════════════
+         BATCH DOWNLOAD & PRINT MONTHLY TIMETABLES MODAL
+         ════════════════════════════════════════════════════════════════ */}
+      {batchTimetableModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-[1px] z-50 flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-white rounded-xl shadow-xl border border-slate-200 w-full max-w-2xl overflow-hidden flex flex-col max-h-[88vh]">
+            {/* Header */}
+            <div className="px-5 py-4 bg-slate-800 text-white flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-lg bg-slate-700">
+                  <FolderDown className="w-5 h-5 text-emerald-400" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold">Batch Download &amp; Print Monthly Timetables</h3>
+                  <p className="text-[11px] text-slate-300 mt-0.5">
+                    Download every month's timetable as individual PDFs or 1 combined multi-month schedule (20mm left punch gutter)
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  if (batchTtDownloading) {
+                    cancelTtBatchRef.current = true;
+                  }
+                  setBatchTimetableModalOpen(false);
+                }}
+                className="p-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-slate-700 transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="p-5 overflow-y-auto space-y-4 flex-1">
+              {batchTtLoading ? (
+                <div className="py-10 flex flex-col items-center justify-center gap-2 text-slate-500">
+                  <Loader2 className="w-6 h-6 animate-spin text-brand-600" />
+                  <span className="text-xs font-medium">Loading monthly timetables...</span>
+                </div>
+              ) : (
+                <>
+                  {/* Step 1 & 2 */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+                        1. Select Months to Include
+                      </label>
+                      <div className="space-y-1.5">
+                        <button
+                          type="button"
+                          onClick={() => setBatchTtMode('all')}
+                          className={`w-full p-2.5 rounded-lg border text-left transition-all flex items-center justify-between ${
+                            batchTtMode === 'all'
+                              ? 'border-brand-600 bg-brand-50/70 ring-1 ring-brand-600'
+                              : 'border-slate-200 hover:bg-slate-50'
+                          }`}
+                        >
+                          <div>
+                            <div className="text-xs font-bold text-slate-800">All Course Months (1-Click All)</div>
+                            <div className="text-[11px] text-slate-500">Complete 6-month training timetable</div>
+                          </div>
+                          <span className="text-xs font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800">
+                            {batchTtMonths.length} Months
+                          </span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setBatchTtMode('taught')}
+                          className={`w-full p-2.5 rounded-lg border text-left transition-all flex items-center justify-between ${
+                            batchTtMode === 'taught'
+                              ? 'border-brand-600 bg-brand-50/70 ring-1 ring-brand-600'
+                              : 'border-slate-200 hover:bg-slate-50'
+                          }`}
+                        >
+                          <div>
+                            <div className="text-xs font-bold text-slate-800">Active / Taught Months Only</div>
+                            <div className="text-[11px] text-slate-500">Months with recorded attendance so far</div>
+                          </div>
+                          <span className="text-xs font-bold px-2 py-0.5 rounded bg-slate-200 text-slate-800">
+                            {batchTtMonths.filter(m => m.is_taught).length} Months
+                          </span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setBatchTtMode('selected')}
+                          className={`w-full p-2.5 rounded-lg border text-left transition-all flex items-center justify-between ${
+                            batchTtMode === 'selected'
+                              ? 'border-brand-600 bg-brand-50/70 ring-1 ring-brand-600'
+                              : 'border-slate-200 hover:bg-slate-50'
+                          }`}
+                        >
+                          <div>
+                            <div className="text-xs font-bold text-slate-800">Selected Month(s)</div>
+                            <div className="text-[11px] text-slate-500">Pick specific months below</div>
+                          </div>
+                          <span className="text-xs font-bold px-2 py-0.5 rounded bg-brand-100 text-brand-800">
+                            {selectedTtMonths.size} Selected
+                          </span>
+                        </button>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+                        2. Timetable Layout Format
+                      </label>
+                      <div className="space-y-2">
+                        <button
+                          type="button"
+                          onClick={() => setBatchTtLayout('grid')}
+                          className={`w-full p-3 rounded-lg border text-left transition-all ${
+                            batchTtLayout === 'grid'
+                              ? 'border-brand-600 bg-brand-50/70 ring-1 ring-brand-600'
+                              : 'border-slate-200 hover:bg-slate-50'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-bold text-slate-800">5-Column Monthly Calendar Grid</span>
+                            <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-emerald-50 text-emerald-700">Official NYSC</span>
+                          </div>
+                          <p className="text-[11px] text-slate-500 mt-1">
+                            Monday–Friday calendar grid showing daily topics, hours, and public holidays (1 page per month).
+                          </p>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setBatchTtLayout('list')}
+                          className={`w-full p-3 rounded-lg border text-left transition-all ${
+                            batchTtLayout === 'list'
+                              ? 'border-brand-600 bg-brand-50/70 ring-1 ring-brand-600'
+                              : 'border-slate-200 hover:bg-slate-50'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-bold text-slate-800">Detailed Daily Schedule Table</span>
+                            <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-slate-100 text-slate-700">List View</span>
+                          </div>
+                          <p className="text-[11px] text-slate-500 mt-1">
+                            Row-by-row chronological table of dates, modules, topics, and teaching modes.
+                          </p>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Checkboxes if 'selected' mode */}
+                  {batchTtMode === 'selected' && (
+                    <div className="border border-slate-200 rounded-lg p-3 bg-slate-50/60 space-y-2">
+                      <div className="flex items-center justify-between pb-1.5 border-b border-slate-200">
+                        <span className="text-xs font-bold text-slate-700">Choose Months ({selectedTtMonths.size} selected)</span>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setSelectedTtMonths(new Set(batchTtMonths.filter(m => m.is_taught).map(m => m.month)))}
+                            className="text-[11px] font-semibold text-emerald-700 hover:underline"
+                          >
+                            Taught Only
+                          </button>
+                          <span className="text-slate-300">·</span>
+                          <button
+                            type="button"
+                            onClick={() => setSelectedTtMonths(new Set(batchTtMonths.map(m => m.month)))}
+                            className="text-[11px] font-semibold text-brand-700 hover:underline"
+                          >
+                            Select All
+                          </button>
+                          <span className="text-slate-300">·</span>
+                          <button
+                            type="button"
+                            onClick={() => setSelectedTtMonths(new Set())}
+                            className="text-[11px] font-semibold text-slate-500 hover:underline"
+                          >
+                            Clear
+                          </button>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                        {batchTtMonths.map(m => {
+                          const checked = selectedTtMonths.has(m.month);
+                          return (
+                            <label
+                              key={m.month}
+                              className={`flex items-center justify-between p-2 rounded-md border cursor-pointer text-xs transition-colors ${
+                                checked ? 'bg-white border-brand-500 text-slate-900 font-semibold' : 'bg-white/60 border-slate-200 text-slate-600'
+                              }`}
+                            >
+                              <div className="flex items-center gap-2">
+                                <input
+                                  type="checkbox"
+                                  checked={checked}
+                                  onChange={() => toggleTtMonth(m.month)}
+                                  className="rounded border-slate-300 text-brand-600 focus:ring-brand-500"
+                                />
+                                <span>{m.label}</span>
+                              </div>
+                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 font-bold">
+                                {m.planned_hours}h
+                              </span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Preview of monthly timetable files */}
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                        3. Monthly Timetable Files ({getFilteredTtMonths().length} Months)
+                      </label>
+                      <span className="text-[11px] text-slate-500">
+                        A4 Landscape · 20mm Left Binding Gutter
+                      </span>
+                    </div>
+                    <div className="border border-slate-200 rounded-lg divide-y divide-slate-100 max-h-48 overflow-y-auto bg-white">
+                      {getFilteredTtMonths().length === 0 ? (
+                        <div className="p-6 text-center text-xs text-slate-400">
+                          No timetable months match the current selection.
+                        </div>
+                      ) : (
+                        getFilteredTtMonths().map((m, idx) => {
+                          const displayFilename = batchTtLayout === 'list'
+                            ? `Timetable List - ${m.month} ${m.label}.pdf`
+                            : m.filename;
+                          return (
+                            <div key={m.month} className="px-3 py-2 flex items-center justify-between gap-2 text-xs hover:bg-slate-50">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <span className="text-[10px] font-mono text-slate-400 w-5">{idx + 1}.</span>
+                                <FileText className="w-3.5 h-3.5 text-brand-700 shrink-0" />
+                                <span className="font-semibold text-slate-800 truncate">{displayFilename}</span>
+                              </div>
+                              <div className="flex items-center gap-2 shrink-0">
+                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 font-semibold">
+                                  {m.teaching_days} Days · {m.planned_hours}h
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => triggerSingleTimetablePdfDownload(m)}
+                                  className="px-2 py-0.5 text-[11px] font-semibold rounded bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors"
+                                  title="Download this month's timetable PDF"
+                                >
+                                  PDF
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Progress bar during sequential download */}
+                  {batchTtDownloading && (
+                    <div className="p-3 rounded-lg bg-brand-50 border border-brand-200 space-y-2">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="font-bold text-brand-900 flex items-center gap-1.5">
+                          <Loader2 className="w-3.5 h-3.5 animate-spin text-brand-700" />
+                          Downloading {batchTtProgress.current} of {batchTtProgress.total}...
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => { cancelTtBatchRef.current = true; }}
+                          className="text-[11px] font-bold text-rose-700 hover:underline"
+                        >
+                          Stop
+                        </button>
+                      </div>
+                      <div className="text-[11px] text-brand-800 truncate font-mono">
+                        {batchTtProgress.currentName}
+                      </div>
+                      <div className="w-full h-1.5 bg-brand-100 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-brand-600 transition-all duration-300"
+                          style={{ width: `${batchTtProgress.total ? Math.round((batchTtProgress.current / batchTtProgress.total) * 100) : 0}%` }}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+
+            {/* Footer Actions */}
+            <div className="px-5 py-3.5 bg-slate-50 border-t border-slate-200 flex flex-wrap items-center justify-between gap-2">
+              <button
+                type="button"
+                onClick={() => handleBatchCombinedTimetables('html', false)}
+                disabled={batchTtDownloading || getFilteredTtMonths().length === 0}
+                className="px-3 py-2 rounded-lg border border-slate-300 bg-white hover:bg-slate-100 text-slate-700 text-xs font-semibold flex items-center gap-1.5 disabled:opacity-50 transition-colors"
+                title="Open all selected monthly timetables in one print-ready view"
+              >
+                <Printer className="w-3.5 h-3.5" />
+                Print All Timetables
+              </button>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleBatchCombinedTimetables('pdf', true)}
+                  disabled={batchTtDownloading || getFilteredTtMonths().length === 0}
+                  className="px-3.5 py-2 rounded-lg border border-brand-300 bg-brand-50 hover:bg-brand-100 text-brand-800 text-xs font-semibold flex items-center gap-1.5 disabled:opacity-50 transition-colors"
+                  title="Download a single combined PDF containing all selected monthly timetables"
+                >
+                  <Layers className="w-3.5 h-3.5" />
+                  Combined PDF (1 File)
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleBatchDownloadIndividualTimetables}
+                  disabled={batchTtDownloading || getFilteredTtMonths().length === 0}
+                  className="px-4 py-2 rounded-lg bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold flex items-center gap-1.5 shadow-xs disabled:opacity-50 transition-colors"
+                  title="Download each month's timetable as its own separate PDF file"
+                >
+                  {batchTtDownloading ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Download className="w-3.5 h-3.5" />
+                  )}
+                  1-Click Download {getFilteredTtMonths().length} Monthly PDFs
+                </button>
+              </div>
             </div>
           </div>
         </div>
