@@ -3,7 +3,7 @@ import {
   Clock, LogIn, LogOut, Save, Trash2, ChevronLeft, ChevronRight,
   CalendarDays, CheckCircle2, AlertTriangle
 } from 'lucide-react';
-import { api } from '../api';
+import { api, isAdminUser } from '../api';
 
 const CAP = 6.5;
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -40,6 +40,7 @@ const localToday = () => {
 };
 
 export default function MyAttendance() {
+  const isAdmin = isAdminUser();
   const [today, setToday] = useState({ date: localToday(), time: '' });
   const [todayRec, setTodayRec] = useState(null);
   const [month, setMonth] = useState(ymOf(localToday()));
@@ -333,13 +334,15 @@ export default function MyAttendance() {
             </button>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <button
-              onClick={fillWeekdays}
-              className="px-3 py-1.5 text-xs font-bold rounded-lg border border-slate-300 hover:bg-slate-50"
-              title="Pre-fill empty weekdays with 09:00 - 15:30 (not saved until you press Save All)"
-            >
-              Fill empty weekdays
-            </button>
+            {isAdmin && (
+              <button
+                onClick={fillWeekdays}
+                className="px-3 py-1.5 text-xs font-bold rounded-lg border border-slate-300 hover:bg-slate-50"
+                title="Pre-fill empty weekdays with 09:00 - 15:30 (not saved until you press Save All)"
+              >
+                Fill empty weekdays
+              </button>
+            )}
             <button
               onClick={saveAll}
               disabled={dirtyCount === 0 || busy === 'all'}

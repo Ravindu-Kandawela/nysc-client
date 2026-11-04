@@ -21,6 +21,13 @@ export function getUser() {
   }
 }
 
+export function isAdminUser() {
+  const u = getUser();
+  if (!u) return false;
+  if (u.role) return u.role === 'admin';
+  return String(u.email || '').trim().toLowerCase() === 'ravindukandawela@gmail.com';
+}
+
 export function setAuth(token, user) {
   localStorage.setItem('nysc_token', token);
   localStorage.setItem('nysc_user', JSON.stringify(user));

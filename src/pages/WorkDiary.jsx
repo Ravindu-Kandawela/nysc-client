@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { BookMarked, Sparkles, Check, Edit2, Calendar, Clock, CheckCircle } from 'lucide-react';
-import { api } from '../api';
+import { api, isAdminUser } from '../api';
 
 export default function WorkDiary({ batchId }) {
+  const isAdmin = isAdminUser();
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [drafting, setDrafting] = useState(false);
@@ -78,18 +79,22 @@ export default function WorkDiary({ batchId }) {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h2 className="text-xl font-bold text-slate-900">Instructor Work Diary</h2>
-          <p className="text-xs text-slate-500 mt-0.5">Daily teaching logs · Auto-drafted from plan</p>
+          <p className="text-xs text-slate-500 mt-0.5">
+            {isAdmin ? 'Daily teaching logs · Auto-drafted from plan' : 'Daily teaching logs & curriculum delivery records'}
+          </p>
         </div>
 
-        <div className="flex items-center gap-2">
-          <button
-            onClick={handleDraftToday}
-            disabled={drafting}
-            className="px-3.5 py-1.5 bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold rounded-lg shadow-xs transition-colors flex items-center gap-1.5"
-          >
-            <Sparkles className="w-3.5 h-3.5" /> {drafting ? 'Drafting...' : 'Auto-Draft Today'}
-          </button>
-        </div>
+        {isAdmin && (
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleDraftToday}
+              disabled={drafting}
+              className="px-3.5 py-1.5 bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold rounded-lg shadow-xs transition-colors flex items-center gap-1.5"
+            >
+              <Sparkles className="w-3.5 h-3.5" /> {drafting ? 'Drafting...' : 'Auto-Draft Today'}
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Entries List */}

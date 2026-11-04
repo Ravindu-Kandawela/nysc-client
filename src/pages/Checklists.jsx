@@ -4,9 +4,10 @@ import {
   Calendar, AlertCircle, AlertTriangle, Plus, Trash2, Edit3, X, 
   RefreshCw, Undo2, ShieldAlert, CheckCircle2, Settings, Sparkles, Search
 } from 'lucide-react';
-import { api, getToken } from '../api';
+import { api, getToken, isAdminUser } from '../api';
 
 export default function Checklists({ batchId }) {
+  const isAdmin = isAdminUser();
   const [tab, setTab] = useState('grid'); // 'grid' | 'analysis' | 'progress'
   const [loading, setLoading] = useState(true);
   const [modules, setModules] = useState([]);
@@ -104,9 +105,9 @@ export default function Checklists({ batchId }) {
     // Strict Rule: If student is marked absent on assessmentDate, they CANNOT be marked achieved on that date
     if (newVal && isAbsent) {
       const suggested = checklistData?.suggestedDates?.[student.id];
-      const hint = suggested?.date
+      const hint = (isAdmin && suggested?.date)
         ? ` Tip: Click "Auto-Fill Missing (Plan + Closest Present)" or switch Assessment Date to ${suggested.date} (closest Present day for ${student.full_name}).`
-        : '';
+        : ' Absent students cannot be added to the checklist on days they did not attend.';
       setAbsentWarning(`Cannot assess ${student.full_name} on ${assessmentDate}: Student was marked ABSENT.${hint}`);
       return;
     }
@@ -454,7 +455,11 @@ export default function Checklists({ batchId }) {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h2 className="text-xl font-bold text-slate-900">Continuous Assessment Checklists</h2>
-          <p className="text-xs text-slate-500 mt-0.5">NVQ Level 4 Performance Criteria, Lesson Plan Date Sync & Attendance Validation</p>
+          <p className="text-xs text-slate-500 mt-0.5">
+            {isAdmin
+              ? 'NVQ Level 4 Performance Criteria, Lesson Plan Date Sync & Attendance Validation'
+              : 'NVQ Level 4 Performance Criteria, Attendance Validation & Competency'}
+          </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
@@ -467,14 +472,16 @@ export default function Checklists({ batchId }) {
             >
               Task Checklist
             </button>
-            <button
-              onClick={() => setTab('analysis')}
-              className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-colors flex items-center gap-1 ${
-                tab === 'analysis' ? 'bg-indigo-600 text-white' : 'text-indigo-700 hover:bg-indigo-50'
-              }`}
-            >
-              <Sparkles className="w-3.5 h-3.5" /> Lesson Plan Analysis & Auto-Fill
-            </button>
+            {isAdmin && (
+              <button
+                onClick={() => setTab('analysis')}
+                className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-colors flex items-center gap-1 ${
+                  tab === 'analysis' ? 'bg-indigo-600 text-white' : 'text-indigo-700 hover:bg-indigo-50'
+                }`}
+              >
+                <Sparkles className="w-3.5 h-3.5" /> Lesson Plan Analysis & Auto-Fill
+              </button>
+            )}
             <button
               onClick={() => setTab('progress')}
               className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${
@@ -582,7 +589,7 @@ export default function Checklists({ batchId }) {
                     onChange={(e) => setAssessmentDate(e.target.value)}
                     className="border border-slate-300 rounded px-2 py-0.5 text-xs font-bold bg-white text-slate-800"
                   />
-                  {planInfo?.plan_end && (
+                  {isAdmin && planInfo?.plan_end ? (
                     <button
                       type="button"
                       onClick={() => setAssessmentDate(planInfo.plan_end)}
@@ -590,6 +597,14 @@ export default function Checklists({ batchId }) {
                       title={`Set date to Lesson Plan date (${planInfo.plan_start === planInfo.plan_end ? planInfo.plan_end : `${planInfo.plan_start} – ${planInfo.plan_end}`})`}
                     >
                       Use Plan Date ({planInfo.plan_end})
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setAssessmentDate(new Date().toISOString().slice(0, 10))}
+                      className="text-[11px] font-bold text-brand-600 hover:text-brand-800 underline"
+                    >
+                      Today
                     </button>
                   )}
                 </div>
@@ -604,21 +619,23 @@ export default function Checklists({ batchId }) {
                   <Edit3 className="w-3.5 h-3.5 text-slate-600" /> Edit Steps / Criteria
                 </button>
 
-                <button
-                  onClick={() => handleAutoFillCurrentTask(selectedTaskId)}
-                  disabled={autoFillLoading || !checklistData}
-                  title="Automatically fill only unmarked students using Lesson Plan date if Present, or their closest Present date if Absent. Keeps existing manual marks untouched!"
-                  className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-lg shadow-xs flex items-center gap-1.5 transition-colors disabled:opacity-50"
-                >
-                  <Sparkles className="w-3.5 h-3.5" /> Auto-Fill Missing (Plan + Closest Present)
-                </button>
+                {isAdmin && (
+                  <button
+                    onClick={() => handleAutoFillCurrentTask(selectedTaskId)}
+                    disabled={autoFillLoading || !checklistData}
+                    title="Automatically fill only unmarked students using Lesson Plan date if Present, or their closest Present date if Absent. Keeps existing manual marks untouched!"
+                    className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-lg shadow-xs flex items-center gap-1.5 transition-colors disabled:opacity-50"
+                  >
+                    <Sparkles className="w-3.5 h-3.5" /> Auto-Fill Missing (Plan + Closest Present)
+                  </button>
+                )}
 
                 <button
                   onClick={handleMarkAllPresent}
                   disabled={saving || !checklistData}
                   className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg shadow-xs flex items-center gap-1.5 transition-colors disabled:opacity-50"
                 >
-                  <CheckSquare className="w-3.5 h-3.5" /> Mark Present on {assessmentDate}
+                  <CheckSquare className="w-3.5 h-3.5" /> {isAdmin ? `Mark Present on ${assessmentDate}` : 'Mark All Present Achieved'}
                 </button>
               </div>
             </div>
@@ -627,7 +644,7 @@ export default function Checklists({ batchId }) {
             {checklistData && (
               <div className="flex flex-wrap items-center justify-between gap-2 text-xs pt-2 border-t border-slate-100">
                 <div className="flex flex-wrap items-center gap-3">
-                  {planInfo?.plan_start && (
+                  {isAdmin && planInfo?.plan_start && (
                     <span className="px-2.5 py-0.5 rounded-full font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
                       📅 Lesson Plan: {planInfo.plan_start === planInfo.plan_end ? planInfo.plan_start : `${planInfo.plan_start} → ${planInfo.plan_end}`} ({planInfo.plan_hours}h)
                     </span>
@@ -648,7 +665,11 @@ export default function Checklists({ batchId }) {
                 </div>
 
                 <div className="text-[11px] text-slate-500">
-                  Tip: Use <strong>Auto-Fill Missing</strong> to keep manual marks and assign absent students to their closest Present day.
+                  {isAdmin ? (
+                    <>Tip: Use <strong>Auto-Fill Missing</strong> to keep manual marks and assign absent students to their closest Present day.</>
+                  ) : (
+                    <span className="italic text-slate-400">* Absent students are automatically protected and locked from being evaluated.</span>
+                  )}
                 </div>
               </div>
             )}
@@ -710,7 +731,7 @@ export default function Checklists({ batchId }) {
                             </div>
 
                             {/* Suggested / Existing Date Info */}
-                            {!isComp && suggested?.date && (
+                            {isAdmin && !isComp && suggested?.date && (
                               <div className="mt-1 text-[9px] font-semibold text-indigo-600" title={suggested.absentOnPlanDate ? `Absent on Lesson Plan date (${suggested.primaryPlanDate}) → Closest Present day: ${suggested.date}` : `Present on Lesson Plan date: ${suggested.date}`}>
                                 {suggested.absentOnPlanDate ? `Closest P: ${suggested.date.slice(5)}` : `Plan: ${suggested.date.slice(5)}`}
                               </div>
